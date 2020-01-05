@@ -1,0 +1,6 @@
+save_path output/%date%/plot-
+save_check 0
+list_sort_type 0
+list_sort_direction 0
+threading 0
+reload_check 1
