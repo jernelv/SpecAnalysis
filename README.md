@@ -6,7 +6,7 @@ SpecAnalysis was made for the analysis of 2D arrays of multivariate data. Pre-pr
 
 SpecAnalysis is intended as a modular software with great flexibility. This readme provides detailed information on the methods used, and the program should be useable even if you are unfamiliar with programming. The code is also thoroughly commented, and is hopefully understandable. Due to the modular nature of the code, it is relatively easy to add your own methods.
 
-Feel free to use SpecAnalysis for your research. You can cite this software with: (article citation).
+Feel free to use SpecAnalysis for your research. You can cite this software with: I.L. Jernelv, K. Strøm, D.R. Hjelme, A. Aksnes, Mid-infrared spectroscopy with a fiber-coupled tuneable quantum cascade laser for glucose sensing. Proceedings of SPIE 11233, Optical Fibers and Sensors for Medical Diagnostics and Treatment Applications XX, 1123311, 2020.
 
 NB! The program will not teach you anything about data analysis, machine learning, or deep learning, but it can hopefully be a useful resource for looking at your data. For more learning resources, you can check for example (insert learning material here).
 
@@ -95,16 +95,12 @@ SG filtering also works together with differentiation. When SG filtering and dif
 ### Scatter Correction
 Scatter correction methods attempt to correct for variability in samples caused by light scattering, which can give both additive and multiplicative effects. A plethora of methods exist, and this software offers three main alternatives: normalisation, standard normal variate (SNV), and (extended) multiplicative scatter correction (E)MSC.
 
-#### Normalisation
-
 #### Standard Normal Variate
 Standard normal variate (SNV) is a pre-processing method that attempts to correct scatter effects in individual spectra. This is done by taking the mean centre of each spectrum, and then dividing each mean-centred spectrum by its own standard deviation.
 
 SNV is done by selecting the "SNV" button.
 
 #### (Extended) Multiplicative Scatter Correction
-Multiplicative scatter correction (MSC) is...
-
 MSC and EMSC typically correct against a reference spectrum. You can add your reference spectrum by clicking on "reference spectrum" and browsing through your file system. However, the algorithms can also make an internal reference spectrum based on the average of the training data, if no reference spectrum is available.
 
 ## Regression Methods
@@ -120,12 +116,12 @@ MLR is a simple type of linear regression which works as an extension of ordinar
 #### Principal Component Regression (PCR)
 A regression method based on principal component analysis (PCA). PCA is an unsupervised data reduction method, where the original data is projected onto a smaller variable subspace with linearly uncorrelated variables. These variables are called principal components. This program uses the PCA implementation from scikit-learn, which uses the singular value decomposition (SVD). This PCA implementation is then combined with linear regression in order to perform PCR.
 
-Select the "PCR" button in order to perform PCR.
+Select the "PCR" button in order to perform PCR. You can set one target principal component, or a range of principal components.
 
 #### Partial Least-Squares Regression (PLSR)
 PLSR is one of the most commonly used multivariate analysis methods in spectroscopy. PLSR finds the regression model by projecting both the dependent and independent variables to a new space, whereas PCR only regresses the dependent variables. This program uses the PLSR implementation from scikit-learn.
 
-Select the "PLSR" button in order to perform PLSR.
+Select the "PLSR" button in order to perform PLSR. You can set one target latent variable, or a range of latent variables.
 
 ### Other Machine Learning Methods
 
@@ -148,8 +144,14 @@ Ridge regression, LASSO, and elastic net are all examples of learning algorithms
 
 Feature selection can technically be used together with embedded methods in this software. In some cases it can be useful, for example manual wavelength selection can be used to exclude wavelength regions with little or no useful information. However, for most other cases it is recommended that embedded methods are not used in conjunction with feature selection.    
 
-### Deep Learning
+## Classification methods
 
+
+## Deep Learning
+
+#### Dense (Fully-connected) Neural Network
+
+#### Convolutional Neural Network
 
 ### Assessing Regression Methods
 
