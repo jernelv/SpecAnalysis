@@ -50,7 +50,7 @@ def MW(case,ui,common_variables,keywords={}):
 		keywords={}
 	WS_getCrossvalSplits([0,1],T,V,ui,use_stored=False)
 	# get regression module
-	reg_module=PLSRregressionMethods.getRegModule(ui['reg_type'],keywords,ui['scaling'],ui['mean_centering'])
+	reg_module=PLSRregressionMethods.getRegModule(ui['reg_type'],keywords)
 	# Set what datapoints to include, the parameter 'wavenum' is in units cm^-1
 	if ui['save_check_var']:
 		common_variables.tempax.fig=common_variables.tempfig

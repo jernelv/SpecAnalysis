@@ -1,0 +1,1487 @@
+from __future__ import print_function
+import fns
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+import matplotlib
+from sklearn.cross_decomposition import PLSRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.datasets import make_regression
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import scale
+from sklearn import preprocessing
+from scipy.signal import savgol_filter
+import scipy.signal
+#from sklearn.model_selection import LeavePOut
+#from sklearn.model_selection import KFold
+from sklearn.model_selection import ShuffleSplit
+from sklearn.model_selection import LeaveOneOut
+from sklearn import svm
+from sklearn.linear_model import ElasticNet
+from sklearn.datasets import make_regression
+import types
+from math import sqrt
+
+import copy
+
+import sys
+
+import importlib
+from .libs import PLSRsave
+from .libs import PLSRlib
+from .libs import PLSRGeneticAlgorithm
+from .libs import PLSRNN
+
+def eprint(*args, **kwargs):
+	print(*args, file=sys.stderr, **kwargs)
+
+
+#### this
+'''functions_to_wrap = [[matplotlib.axes.Axes,'pcolormesh'],
+                     [matplotlib.figure.Figure,'colorbar'],
+                     [matplotlib.figure.Figure,'clf'],
+                     [matplotlib.figure.Figure,'set_size_inches'],
+                     [matplotlib.figure.Figure,'add_subplot'],
+                     [matplotlib.figure.Figure,'subplots'],
+                     [matplotlib.figure.Figure,'subplots_adjust'],
+                     [matplotlib.axes.Axes,'invert_yaxis'],
+                     [matplotlib.axes.Axes,'invert_xaxis'],
+                     [matplotlib.axes.Axes,'set_title'],
+                     [matplotlib.axes.Axes,'axis'],
+                     [matplotlib.axes.Axes,'cla'],
+                     [matplotlib.axes.Axes,'plot'],
+                     [matplotlib.figure.Figure,'savefig'],
+                     [matplotlib.axes.Axes,'set_xlim'],
+                     [matplotlib.axes.Axes,'set_position'],
+                     [matplotlib.axes.Axes,'bar'],
+                     [matplotlib.figure.Figure,'add_axes'],
+                     [plt,'figure'],
+                     ]
+
+for function in functions_to_wrap:
+    if not 'function rimt.<locals>.rimt_this' in str(getattr(function[0], function[1])):
+    	setattr(function[0], function[1], fns.rimt(getattr(function[0], function[1])))'''
+
+
+class mlr:
+	"""Implementation of multiple linear regression based on linear regression,
+	which takes in whether or not to scale the data. The fit and predict functions
+	are used to fit the model to training data and to predict the unknown
+	validation data, respectively."""
+	def __init__(self, scale):
+		self.linreg=LinearRegression()
+		self.scaler=StandardScaler(copy=True, with_mean=True, with_std=scale)
+	def fit(self, training,truevalues):
+		self.scaler.fit(training)
+		transformedTraining=self.scaler.transform(training) #scale(training)
+		self.linreg.fit(transformedTraining, truevalues)
+
+	def predict(self, dataset):
+		transformedDataset=self.scaler.transform(dataset)
+		return np.rot90([self.linreg.predict(transformedDataset)],3)
+class pcr:
+	"""Implementation of principal component regression as a combination of the
+	PCA and linear regression methods from scipy. Takes in the number of principal
+    components and whether or not to scale as parameters. The fit and predict
+	functions are used to fit the model to training data and to predict the
+	unknown validation data."""
+	def __init__(self, components, scale):
+		self.linreg=LinearRegression()
+		self.pca=PCA()
+		self.components=components
+		self.scaler=StandardScaler(copy=True, with_mean=True, with_std=scale)
+
+	def fit(self, training,truevalues):
+		self.scaler.fit(training)
+		transformedTraining=self.scaler.transform(training) #scale(training)
+		X_reduced = self.pca.fit_transform((transformedTraining))
+		self.linreg.fit(X_reduced[:,:self.components], truevalues)
+
+	def predict(self, dataset):
+		transformedDataset=self.scaler.transform(dataset)
+		X_reduced = self.pca.transform(transformedDataset) #scale(dataset)
+		return np.rot90([self.linreg.predict(X_reduced[:,:self.components])],3)
+class myRandomForestRegressor:
+	"""Class for random forest regression. Takes in tree branching depth,
+	the number of trees to make, and whether or not to scale the data. The fit
+	and predict functions are used to fit the model to training data and to predict
+	unknown validation data, respectively."""
+	def __init__(self, depth, scale, n_estimators=200):
+		self.regr=RandomForestRegressor(max_depth=depth, #random_state=0,
+			n_estimators=n_estimators)
+		self.scaler=StandardScaler(copy=True, with_mean=True, with_std=scale)
+	def fit(self, training,truevalues):
+		self.scaler.fit(training)
+		transformedTraining=self.scaler.transform(training) #scale(training)
+		self.regr.fit(transformedTraining, truevalues)
+		'''RandomForestRegressor(bootstrap=True, criterion='mse', max_depth=2,
+           max_features='auto', max_leaf_nodes=None,
+           min_impurity_decrease=0.0, min_impurity_split=None,
+           min_samples_leaf=1, min_samples_split=2,
+           min_weight_fraction_leaf=0.0, n_estimators=100, n_jobs=None,
+           oob_score=False, random_state=0, verbose=0, warm_start=False)'''
+	def predict(self, dataset):
+		transformedDataset=self.scaler.transform(dataset)
+		#print(self.regr.predict(transformedDataset))
+		return np.rot90([self.regr.predict(transformedDataset)],3)
+
+class mySupportVectorRegressor:
+	"""Class for support vector regression. Takes in whether or not to do scaling,
+	and all parameters related to the kernel, kernel type, and regularisation.
+	The fit function fits the model to the training data, while predict is used
+	for predicting unknown values in the validation set."""
+	def __init__(self, scale, kernel, coef0, regularisation, gamma, degree):
+		self.regr=svm.SVR(kernel=kernel.lower(),coef0=coef0,C=regularisation,gamma=gamma,degree=degree)
+		self.scaler=StandardScaler(copy=True, with_mean=True, with_std=scale)
+	def fit(self, training, truevalues):
+		self.scaler.fit(training)
+		transformedTraining=self.scaler.transform(training)
+		self.regr.fit(transformedTraining, truevalues)
+	def predict(self, dataset):
+		transformedDataset=self.scaler.transform(dataset)
+		return np.rot90([self.regr.predict(transformedDataset)],3)
+
+class myElasticNetRegressor:
+	"""Class for elastic net regression. Takes in whether or not to do scaling,
+	and the l1_ratio parameter. The fit and predict functions are used for fitting
+	the model to known data and to predict on unknown data, respectively."""
+	def __init__(self, scale, l1_ratio):
+		self.regr=ElasticNet(l1_ratio=l1_ratio, random_state=0)
+		self.scaler=StandardScaler(copy=True, with_mean=True, with_std=scale)
+	def fit(self, training, truevalues):
+		self.scaler.fit(training)
+		transformedTraining = self.scaler.transform(training)
+		self.regr.fit(transformedTraining, truevalues)
+	def predict(self, dataset):
+		transformedDataset=self.scaler.transform(dataset)
+		return np.rot90([self.regr.predict(transformedDataset)], 3)
+
+class myNeuralNetRegressor:
+	def __init__(self, scaling, number_of_layers, layer_size, drop_frac, batch_size, epochs):
+		self.neural_net=PLSRNN.myNeuralNet(number_of_layers, layer_size, drop_frac, batch_size, epochs)
+		self.scaler=StandardScaler(copy=True, with_mean=True, with_std=scaling)
+	def fit(self, training, truevalues):
+		self.scaler.fit(training)
+		transformedTraining = self.scaler.transform(training)
+		self.neural_net.fit(transformedTraining, truevalues)
+	def predict(self, dataset):
+		transformedDataset=self.scaler.transform(dataset)
+		return np.rot90([self.neural_net.predict(transformedDataset).reshape(-1)], 3)
+
+#from multiprocessing import Pool
+#import datetime
+fontsize=16
+#matplotlib.rc('text', usetex=True)
+#matplotlib.rc('text.latex', preamble=r'\usepackage{upgreek}')
+
+@fns.rimt
+def draw(common_variables):
+    common_variables.fig.canvas.draw()
+    common_variables.frame.update()
+
+def getRegModule(reg_type,keywords,Scaling):
+	"""Function used to get the regression type and any associated parameters."""
+	if reg_type=='MLR':
+		return mlr(Scaling)
+	elif reg_type=='PLSR':
+		latent_variables=keywords['Latent variables']
+		return PLSRegression(n_components=latent_variables,scale=Scaling)
+	elif reg_type=='PCR':
+		components=keywords['Components']
+		return pcr(components,Scaling)
+	elif reg_type=='Tree':
+		depth=keywords['Depth']
+		n_estimators=keywords['n_estimators']
+		return myRandomForestRegressor(depth,Scaling,n_estimators=n_estimators)
+	elif reg_type=='SVR':
+		kernel=keywords['kernel']
+		gamma=keywords['gamma']
+		degree=keywords['degree']
+		coef0=keywords['coef0']
+		regularisation=keywords['regularisation']
+		return mySupportVectorRegressor(Scaling,kernel, coef0,
+					regularisation, gamma, degree)
+	elif reg_type=='ElasticNet':
+		l1_ratio=keywords['l1_ratio']
+		return myElasticNetRegressor(Scaling, l1_ratio)
+	elif reg_type=='NeuralNet':
+		number_of_layers=keywords['number_of_layers']
+		layer_size=keywords['layer_size']
+		drop_frac=keywords['drop_frac']
+		batch_size=keywords['batch_size']
+		epochs=keywords['epochs']
+		return myNeuralNetRegressor(Scaling, number_of_layers, layer_size, drop_frac, batch_size, epochs)
+def runLineOfWindows(inp):
+	Wsize=inp[0]
+	n=inp[1]
+	MWmax=inp[2]
+	T=inp[3]
+	V=inp[4]
+	reg_type=inp[5]
+	scaling=inp[6]
+	keywords=inp[7]
+	RMS_type=inp[8]
+	'''coeff_det_type = inp[9]'''
+	#Wsizes.append(Wsize)
+	#if Wsize < MWmax+1:
+	#	Wresults.append([])
+	#Wwavenumbers.append([])
+	#Wwindowsize.append([])
+	Wresults=np.zeros((1,n+1))
+	Wstarts=np.zeros((1,n+1), dtype=int)
+	Wsizes=np.zeros((1,n+1), dtype=int)
+	for i in range(n+1):
+		#Wwavenumbers[-1].append(wavenumbers[0]-dw*i) #center of window
+		#Wwavenumbers[k,i]=wavenumbers[0]-dw*i #center of window
+		#Wwindowsize[k,i]=(Wsize-0.5)*dw
+		#Wwindowsize[-1].append((Wsize-0.5)*dw)
+		Wstart=i-int(Wsize/2)
+		Wend=Wstart+Wsize
+		if Wsize < MWmax+1 and i < n+1:
+			if Wstart<0 or Wend>n :
+				continue
+				#Wresults[-1].append(0)
+			else:
+				#print(Wstart,Wend,len(wavenumbers))
+				for D in [T,V]:
+					if len(D.Y)>0:
+						D.Xsmol=D.X[:,Wstart:Wend]
+				reg_module=getRegModule(reg_type,keywords,scaling)
+
+				reg_module.fit(T.Xsmol, T.Y)
+				# get RMSe
+				for D in [T,V]:
+					if len(D.Y)>0:
+						D.pred = reg_module.predict(D.Xsmol)[:,0]
+					else:
+						D.pred=[[]]
+				if RMS_type=='Combined RMSEP+RMSEC':
+					RMSe=np.sqrt((np.sum((T.pred-T.Y)**2)+np.sum((V.pred-V.Y)**2))/(T.num+V.num))
+				elif RMS_type=='RMSEC':
+					RMSe=np.sqrt((np.sum((T.pred-T.Y)**2))/(T.num))
+				elif RMS_type=='RMSEP':
+					RMSe=np.sqrt((np.sum((V.pred-V.Y)**2))/(V.num))
+				#Wresults[-1].append(RMSe)
+				#Wresults[k,i]=RMSe
+				#Wstarts[k,i]=Wstart
+				#Wsizes[k,i]=Wsize
+				Wresults[0,i]=RMSe
+				Wstarts[0,i]=Wstart
+				Wsizes[0,i]=Wsize
+				#print(i,RMSe)
+
+				#get R/R^2 (coefficient of determination)
+				#first calculate the mean
+				'''if ui['is_validation'] == 1:
+					y_mean = np.sum(V.Y)*(1/V.num)
+					if ui['coeff_det_type']=='R^2':
+						coeff_det = 1 - ((np.sum((V.Y - V.pred)**2))/(np.sum((V.Y - y_mean)**2)))
+					elif ui['coeff_det_type']=='R':
+						coeff_det = sqrt(1 - ((np.sum((V.Y - V.pred)**2))/(np.sum((V.Y - y_mean)**2))))
+				else:
+					y_mean = np.sum(T.Y)*(1/T.num)
+					if ui['coeff_det_type']=='R^2':
+						coeff_det = 1 - ((np.sum((T.Y - T.pred)**2))/(np.sum((T.Y - y_mean)**2)))
+					elif ui['coeff_det_type']=='R':
+						coeff_det = sqrt(1 - ((np.sum((T.Y - T.pred)**2))/(np.sum((T.Y - y_mean)**2))))'''
+	#print(n,Wstarts,Wsizes,len(T.X[0]))
+	return Wresults, Wstarts, Wsizes
+
+def crossval(T,V,ui,case):
+	if not ui['is_validation']=='X-val on training':
+		case.supressplot=0
+		return [case]
+	else:
+		case.Xval_cases=[]
+		#XvalTs=[]
+		#XvalVs=[]
+		#supressplots=[]
+		if ui['cross_val_N']==1:
+			ui['cross_val_max_cases']=len(T.Y)
+			splitodule=LeaveOneOut()
+			print('Using sklearn.LeaveOneOut on '+str(len(T.Y))+' measasurements. Maxcases set to '+str(len(V.Y)))
+		else:
+			splitodule=ShuffleSplit(n_splits=ui['cross_val_max_cases'], test_size=ui['cross_val_N'])
+		for train,val in splitodule.split(T.X):
+			case.Xval_cases.append(types.SimpleNamespace())
+			case.Xval_cases[-1].train=train
+			case.Xval_cases[-1].val=val
+			case.Xval_cases[-1].T=types.SimpleNamespace()
+			case.Xval_cases[-1].T.X=np.array(T.X[train])
+			case.Xval_cases[-1].T.Y=np.array(T.Y[train])
+			case.Xval_cases[-1].V=types.SimpleNamespace()
+			case.Xval_cases[-1].V.X=np.array(T.X[val])
+			case.Xval_cases[-1].V.Y=np.array(T.Y[val])
+			case.Xval_cases[-1].supressplot=1
+		case.Xval_cases[-1].supressplot=0
+	return case.Xval_cases
+
+def MW(Xval_case,case,ui,common_variables,keywords={}):
+	T=Xval_case.T
+	V=Xval_case.V
+	supressplot=Xval_case.supressplot
+	wavenumbers=case.wavenumbers
+	folder=case.folder
+	try:
+		keywords=case.keywords
+	except:
+		keywords={}
+	# Set what datapoints to include, the parameter 'wavenum' is in units cm^-1
+	#datapointlists=ui.datapointlists
+
+	# common_variables.tempax and common_variables.tempfig are for the figure that is saved, common_variables.ax and common_variables.fig are for the figure that is displayed
+	# need to have this for the colorbar
+	if ui['save_check_var']:
+		common_variables.tempax.fig=common_variables.tempfig
+	'''T=container()
+	V=container()
+	T.X=traX
+	V.X=valX
+	T.Y=traY
+	V.Y=valY'''
+	T.num=len(T.Y)
+	V.num=len(V.Y)
+	n=len(wavenumbers)
+	dw=wavenumbers[0]-wavenumbers[1]
+	if ui['do_moving_window']:
+		#	Windowsize is input in cm^-1, transform to indexes
+		MWmax=int(round(ui['moving_window_max']/abs(dw),0))
+		MWmin=int(round(ui['moving_window_min']/abs(dw),0))
+	if ui['do_moving_window']:
+		Wresults=[]
+		Wwavenumbers=[] # center of window, same size as results
+		Wwindowsize=[] # windowsize in cm^-1, matrix, same size as results
+		bestSize=MWmin
+		bestStart=int(n/2)
+		bestVal=10000000
+		#V.bestSize=MWmin
+		#V.bestStart=int(n/2)
+		#V.bestVal=10000000
+		Wresults=np.zeros((MWmax+1-MWmin,n+1))
+		Wstarts=np.zeros((MWmax+1-MWmin,n+1), dtype=int)
+		Wsizes2=np.zeros((MWmax+1-MWmin,n+1), dtype=int)
+		Wwavenumbers=np.zeros((MWmax+1-MWmin,n+1))
+		Wwindowsize=np.zeros((MWmax+1-MWmin,n+1))
+		Wsizes=range(MWmin,MWmax+1)
+		for k in range(len(Wsizes)):
+			Wsize=Wsizes[k]
+			for i in range(n+1):
+				#Wwavenumbers[-1].append(wavenumbers[0]-dw*i) #center of window
+				Wwavenumbers[k,i]=wavenumbers[0]-dw*i #center of window
+				Wwindowsize[k,i]=(Wsize-0.5)*dw
+				#Wwindowsize[-1].append((Wsize-0.5)*dw)
+		#set up 'prameters' for each line(windowsize) in plot
+		parameters=[]
+		for k in range(len(Wsizes)):
+			Wsize=Wsizes[k]
+			parameters.append([Wsize,n,MWmax,T,V,ui['reg_type'],ui['scaling'],keywords,ui['RMS_type']])
+		#print(datetime.datetime.utcnow())
+		if ui['multiprocessing']: #run runLineOfWindows in paralell mode
+			eprint('running pool')
+			print('running MW')
+			common_variables.frame.update()
+			pool = fns.Pool(4)
+			res=pool.map(runLineOfWindows, parameters)
+			pool.close()
+			eprint('done running pool')
+			print('done running MW')
+			common_variables.frame.update()
+		else: #run runLineOfWindows in serial mode
+			res=[]
+			for p in parameters:
+				res.append(runLineOfWindows(p))
+		#resturcture results
+		for k in range(len(Wsizes)):
+			Wsize=Wsizes[k]
+			Wresults[k,:]=res[k][0][0,:]
+			Wstarts[k,:]=res[k][1][0,:]
+			Wsizes2[k,:]=res[k][2][0,:]
+		#find best window
+		#eprint(sum(sum(Wresults)))
+		for k in range(len(Wsizes)):
+			Wsize=Wsizes[k]
+			for i in range(n):
+				Wstart=i-int(Wsize/2)
+				Wend=i+int((Wsize+1)/2)
+				if Wsize < MWmax+1 and i < n:
+					if Wstart<0 or Wend>n :
+						continue
+					else:
+						if Wresults[k,i]<bestVal:
+							bestVal=Wresults[k,i]
+							bestStart=Wstarts[k,i]
+							bestSize=Wsizes2[k,i]
+
+		Wwavenumbers=np.array(Wwavenumbers)
+		Wwindowsize=np.array(Wwindowsize)
+		#plot MWresults
+		Wresults=np.array(Wresults)
+		Wresults=Wresults+(Wresults==0)*np.max(Wresults) # set empty datapoints to max value
+		#
+		unique_keywords=PLSRsave.get_unique_keywords_formatted(common_variables.keyword_lists,keywords)
+		if not supressplot:
+			ui['cbar']=PLSRsave.PcolorMW(Wwavenumbers,Wwindowsize,Wresults,fns.add_axis(common_variables.fig,ui['fig_per_row'],ui['max_plots']),unique_keywords[1:],ui)
+			if ui['save_check_var']:
+				tempCbar=PLSRsave.PcolorMW(Wwavenumbers,Wwindowsize,Wresults,common_variables.tempax,unique_keywords[1:],ui)
+				common_variables.tempfig.subplots_adjust(bottom=0.13,left=0.15, right=0.97, top=0.9)
+				plotFileName=folder+ui['reg_type']+unique_keywords.replace('.','p')+'_MW'
+				common_variables.tempfig.savefig(plotFileName+ui['file_extension'])
+				#common_variables.tempfig.savefig(folder+'Comp'+str(components)+'.pdf')
+				#common_variables.tempfig.savefig(folder+'Comp'+str(components)+'.svg')
+				tempCbar.remove()
+			draw(common_variables)
+		#common_variables.ax.fig=common_variables.fig
+		Wstart=bestStart
+		Wend=Wstart+bestSize
+	else: #	 not MW, just plot normal
+		# set min and max size to maximum
+		Wstart=0
+		Wend=len(wavenumbers)
+	#plot best result
+	# or only result if not MW
+	reg_module=getRegModule(ui['reg_type'],keywords,ui['scaling'])
+	reg_module.Wstart=Wstart
+	reg_module.Wend=Wend
+	Wwidth=wavenumbers[Wstart]-wavenumbers[Wend-1] #cm-1
+	Wcenter=0.5*(wavenumbers[Wstart]+wavenumbers[Wend-1]) #cm-1
+	# get RMSe
+	for E in [T,V]:
+		if len(E.Y)>0:
+			E.Xsmol=E.X[:,Wstart:Wend]
+	reg_module.fit(T.Xsmol, T.Y)
+	for E in [T,V]:
+		if len(E.Y)>0:
+			E.pred = reg_module.predict(E.Xsmol)[:,0]
+		else:
+			E.pred = []
+	Xval_case.RMSECP=np.sqrt((np.sum((T.pred-T.Y)**2)+np.sum((V.pred-V.Y)**2))/(T.num+V.num))
+	Xval_case.RMSEC=np.sqrt((np.sum((T.pred-T.Y)**2))/(T.num))
+	if V.num>0:
+		Xval_case.RMSEP=np.sqrt((np.sum((V.pred-V.Y)**2))/(V.num))
+	if ui['RMS_type']=='Combined RMSEP+RMSEC':
+		RMSe=Xval_case.RMSECP
+	elif ui['RMS_type']=='RMSEC':
+		RMSe=Xval_case.RMSEC
+	elif ui['RMS_type']=='RMSEP':
+		RMSe=Xval_case.RMSEP
+	#calculating coefficient of determination
+	if ui['is_validation'] != 'Training':
+		y_mean = np.sum(V.Y)*(1/V.num)
+		Xval_case.R_squared = 1 - ((np.sum((V.Y - V.pred)**2))/(np.sum((V.Y - y_mean)**2)))
+	else:
+		y_mean = np.sum(T.Y)*(1/T.num)
+		Xval_case.R_squared=1 - (np.sum((T.Y - T.pred)**2))/(np.sum((T.Y - y_mean)**2))
+	try:
+		Xval_case.R_not_squared=sqrt(Xval_case.R_squared)
+	except:
+		Xval_case.R_not_squared=0
+	if ui['coeff_det_type']=='R^2':
+		coeff_det = Xval_case.R_squared
+	elif ui['coeff_det_type']=='R':
+		coeff_det = Xval_case.R_not_squared
+	#plot
+	if ui['do_moving_window']:
+		keywords['MW width']=str(round(Wwidth,1))+r' cm$^{-1}$'
+		keywords['MW center']=str(round(Wcenter,1))+r' cm$^{-1}$'
+	if not supressplot:
+		PLSRsave.plot_regression(Xval_case,case,ui,fns.add_axis(common_variables.fig,ui['fig_per_row'],ui['max_plots']),keywords,RMSe, coeff_det)
+		if ui['save_check_var']:
+			PLSRsave.plot_regression(Xval_case,case,ui,common_variables.tempax,keywords,RMSe, coeff_det)
+			common_variables.tempfig.subplots_adjust(bottom=0.13,left=0.15, right=0.97, top=0.95)
+			#common_variables.tempfig.savefig(folder+'Best'+'Comp'+str(components)+'Width'+str(round(Wwidth,1))+'Center'+str(round(Wcenter,1))+'.pdf')
+			#common_variables.tempfig.savefig(folder+'Best'+'Comp'+str(components)+'Width'+str(round(Wwidth,1))+'Center'+str(round(Wcenter,1))+'.svg')
+			plotFileName=folder+ui['reg_type']+PLSRsave.get_unique_keywords_formatted(common_variables.keyword_lists,keywords).replace('.','p')
+			common_variables.tempfig.savefig(plotFileName+ui['file_extension'])
+		draw(common_variables)
+	return reg_module, RMSe
+
+
+
+def Derivatives(sgcase,ui):  #derivative for using Moving Window
+	#traX=T.X
+	#traY=T.Y
+	#valX=V.X
+	#valY=V.Y
+	derivative_cases=[]
+	# not derivative
+	if ui['derivative']=='Not der' or ui['derivative']=='all':
+		#create sgcase.folder for storing results
+		if ui['derivative']=='all': # if not derrivative, do not make a new sgcase.folder
+			folderNotDer=sgcase.folder+'NotDer/'
+			if not os.path.exists(folderNotDer) and ui['save_check_var']:
+				os.makedirs(folderNotDer)
+		elif ui['derivative']=='Not der':
+			folderNotDer=sgcase.folder
+		#make case
+		derivative_cases.append(types.SimpleNamespace())
+		derivative_cases[-1].T=copy.copy(sgcase.T)
+		derivative_cases[-1].V=copy.copy(sgcase.V)
+		derivative_cases[-1].wavenumbers=sgcase.wavenumbers
+		derivative_cases[-1].sg_config=sgcase.sg_config
+		derivative_cases[-1].derrivative=sgcase.sg_config.derivative
+		derivative_cases[-1].folder=folderNotDer
+		#do MW
+		#derivative_cases.append([sgcase.T,sgcase.V,sgcase.wavenumbers, folderNotDer,ui,sgcase.sg_config,curDerivative+sgcase.sg_config.derivative])
+		#MW(T,V,sgcase.wavenumbers,ui, folderNotDer+'/',ui)
+	# First Der
+	if ui['derivative']=='1st der' or ui['derivative']=='all':
+		curDerivative=1
+		T1=container()
+		T1.Y=sgcase.T.Y
+		V1=container()
+		V1.Y=sgcase.V.Y
+		#create sgcase.folder for storing results
+		folderFirstDer=sgcase.folder+'1stDer/'
+		if not os.path.exists(folderFirstDer) and ui['save_check_var']:
+			os.makedirs(folderFirstDer)
+		#differentiate training
+		TXDer=[]
+		for i in range(len(sgcase.T.X)):
+			dwave,X = PLSRlib.Der(sgcase.wavenumbers,sgcase.T.X[i])
+			TXDer.append(X)
+		T1.X=np.array(TXDer)
+		#differentiate validation
+		if ui['is_validation']=='Training and Validation':
+			VXDer=[]
+			for i in range(len(sgcase.V.X)):
+				dwave,X = PLSRlib.Der(sgcase.wavenumbers,sgcase.V.X[i])
+				VXDer.append(X)
+			V1.X=np.array(VXDer)
+		else:
+			V1.X=sgcase.V.X
+		#make case
+		derivative_cases.append(types.SimpleNamespace())
+		derivative_cases[-1].T=T1
+		derivative_cases[-1].V=V1
+		derivative_cases[-1].wavenumbers=dwave
+		derivative_cases[-1].sg_config=sgcase.sg_config
+		derivative_cases[-1].derrivative=curDerivative
+		derivative_cases[-1].folder=folderFirstDer
+		#MW(T1,V1,dwave,ui, folderFirstDer+'/',ui)
+	# second der
+	if ui['derivative']=='2nd der' or ui['derivative']=='all':
+		curDerivative=2
+		T2=container()
+		T2.Y=sgcase.T.Y
+		V2=container()
+		V2.Y=sgcase.V.Y
+		#create sgcase.folder for storing results
+		folderSecondDer=sgcase.folder+'2ndDer/'
+		if not os.path.exists(folderSecondDer) and ui['save_check_var']:
+			os.makedirs(folderSecondDer)
+		#differentiate training
+		TX2Der=[]
+		for i in range(len(sgcase.T.X)):
+			dwave,X = PLSRlib.Der2(sgcase.wavenumbers,sgcase.T.X[i])
+			TX2Der.append(X)
+		T2.X=np.array(TX2Der)
+		#differentiate validation
+		if ui['is_validation']=='Training and Validation':
+			VX2Der=[]
+			for i in range(len(sgcase.V.X)):
+				dwave,X = PLSRlib.Der2(sgcase.wavenumbers,sgcase.V.X[i])
+				VX2Der.append(X)
+			V2.X=np.array(VX2Der)
+		else:
+			V2.X=sgcase.V.X
+		#do MW
+		#make case
+		derivative_cases.append(types.SimpleNamespace())
+		derivative_cases[-1].T=T2
+		derivative_cases[-1].V=V2
+		derivative_cases[-1].wavenumbers=dwave
+		derivative_cases[-1].sg_config=sgcase.sg_config
+		derivative_cases[-1].derrivative=curDerivative
+		derivative_cases[-1].folder=folderSecondDer
+		#MW(T2,V2,dwave,ui, folderSecondDer+'/',ui)
+	return derivative_cases
+
+def Sgolay(T,V,wavenumbers,ui, folder): #sgolay for using Moving Window
+	sg_cases=[]
+	if ui['use_SG']:
+		if ui['SGderivative']=='Not der':
+			ders=[0]
+		elif ui['SGderivative']=='1st der':
+			ders=[1]
+		elif ui['SGderivative']=='2nd der':
+			ders=[2]
+		elif ui['SGderivative']=='all':
+			ders=[0,1,2]
+		for filtersize in range(ui['SG_window_min'],ui['SG_window_max']+1,2):
+			for order in range(ui['SG_order_min'],ui['SG_order_max']+1):
+				for der in ders:
+					if der>order:
+						continue
+					sg_cases.append(types.SimpleNamespace())
+					sg_config=container()
+					T2=container()
+					T2.Y=T.Y
+					V2=container()
+					V2.Y=V.Y
+					#create folder for storing results
+					folderSG=folder+'SG_size'+str(filtersize)+'_order'+str(order)+'/'
+					if der==0:
+						if ui['SGderivative']=='Not der':
+							folderSG=folderSG #do not include derivative information in folder
+						elif ui['SGderivative']=='all':
+							folderSG=folderSG+'NotDer/'
+					elif der==1:
+						folderSG=folderSG+'1stDer/'
+					elif der==2:
+						folderSG=folderSG+'2ndDer/'
+					if not os.path.exists(folderSG) and ui['save_check_var']:
+						os.makedirs(folderSG)
+					#sgolay for training set
+					TXSG=[]
+					for i in range(len(T.X)):
+						X = savgol_filter(T.X[i], filtersize, order, der)
+						TXSG.append(X)
+					T2.X=np.array(TXSG)
+					#sgolay for validation set
+					VXSG=[]
+					if ui['is_validation']=='Training and Validation':
+						for i in range(len(V.X)):
+							X = savgol_filter(V.X[i], filtersize, order, der)
+							VXSG.append(X)
+							V2.X=np.array(VXSG)
+					else:
+						V2=V
+					sg_config.derivative=der
+					sg_config.curSGOrder=order
+					sg_config.curSGFiltersize=filtersize
+					sg_cases[-1].T=T2
+					sg_cases[-1].V=V2
+					sg_cases[-1].wavenumbers=wavenumbers
+					sg_cases[-1].folder=folderSG
+					sg_cases[-1].sg_config=sg_config
+	else:
+		sg_cases.append(types.SimpleNamespace())
+		sg_config=types.SimpleNamespace()
+		sg_config.derivative=0
+		sg_config.curSGOrder=None
+		sg_config.curSGFiltersize=None
+		sg_cases[-1].T=T
+		sg_cases[-1].V=V
+		sg_cases[-1].wavenumbers=wavenumbers
+		sg_cases[-1].folder=folder
+		sg_cases[-1].sg_config=sg_config
+	return sg_cases
+
+
+def normalizeVec(inp):
+    inp=np.array(inp)
+    factor=len(inp)/np.sqrt(sum(inp**2))
+    return inp*factor
+
+def MA(n,inp):
+		b = [1.0/n]*n
+		a = 1
+		return scipy.signal.filtfilt(b,a,inp)
+
+def butterworth(n,inp):
+		[b, a] = scipy.signal.butter(n, 0.2)
+		return scipy.signal.filtfilt(b,a,inp)
+
+def Hamming(n,inp):
+		b = scipy.signal.firwin(n, cutoff = 0.2, window = "hamming")
+		a = 1
+		return scipy.signal.filtfilt(b,a,inp)
+
+class container: #empty container class
+	def __init__(self):
+		return
+
+class PLSRfile(object):
+	################################################################################################
+	############################### Function for loading files #####################################
+	################################################################################################
+	def __init__ (self,location,frame,buttons,values=[]):
+		self.frame=frame
+		self.buttons=buttons
+		self.location=location
+		self.values=values
+		self.success=1
+	def load_file (self,list_for_appending):
+		frame=self.frame
+		buttons=self.buttons
+		#ConversionFactor=float(buttons['RegressionConversionFactor'].get())
+		MaxRange=float(buttons['max_range'])
+		#SubtractZero=float(buttons['RegressionSubtractZero'].get())
+
+
+		'''ScaleConcentrations=int(buttons['RegressionScaleConcentrations'].get())
+		if ScaleConcentrations==1:
+			mulfactor=ConversionFactor
+		else:
+			mulfactor=1.0'''
+		self.success=0
+		################################################################################################
+		################################## read .dpt file ##############################################
+		################################################################################################
+		if self.location[-4:len(self.location)]=='.dpt' or self.location[-4:len(self.location)]=='.txt' or self.location[-4:len(self.location)]=='.DPT':
+			#print(self.location)
+			self.success=1 # set success to true (include file)
+			self.x=[]
+			self.y=[]
+			with open(self.location) as f:
+				#first_line = 0
+				first_line = f.readline().strip()
+				#print(lines[0])
+				#n = 0
+				if ',' in first_line:
+					for line in f:
+						x1,x2 = map(float,line.split(','))
+						self.x.append(x1)
+						self.y.append(x2)
+						#print(self.x, self.y)
+				else:
+					for line in f:
+						#print(1)
+						self.x.append(float(line.split()[0].strip()))
+						self.y.append(float(line.split()[1].strip()))
+			if self.values==[]: # set truevalues from filename if not given as input variable
+				self.trueValues=[float(''.join(self.location.split('/')[-1].split('.')[0]))]
+			else:
+				self.trueValues=self.values
+			self.x=np.array(self.x)
+			self.y=np.array(self.y)
+			return
+		################################################################################################
+		################################## read .laser file ##############################################
+		################################################################################################
+		if self.location[-6:len(self.location)]=='.laser':
+			self.success=1 # set success to true (include file)
+			self.x=[]
+			self.y=[]
+			with open(self.location) as f:
+				for line in f:
+					if not '#' in line:
+						self.x.append(float(line.split()[0].strip()))
+						self.y.append(float(line.split()[1].strip()))
+			if self.values==[]: # set truevalues from filename if not given as input variable
+				self.trueValues=[float(''.join(self.location.split('/')[-1].split('.')[0]))]
+			else:
+				self.trueValues=self.values
+			self.x=np.array(self.x)
+			self.y=np.array(self.y)
+			return
+		################################################################################################
+		################################## read .list file #############################################
+		################################################################################################
+		if self.location[-5:len(self.location)]=='.list':
+			self.success=0 # set success to false (do not include the .list file itself)
+			frame.regressionCurControlTypes=['Glucose']
+			with open(self.location) as f:
+				for line in f:
+					if 'ilepath' in line:
+						frame.regressionCurControlTypes=[]
+						for i, contrltytpe in enumerate(line.split()[1:]):
+							frame.regressionCurControlTypes.append(contrltytpe)
+							frame.button_handles['cur_col'][i]["text"]=contrltytpe
+						continue
+					elif len(line.split())>0 and not line[0]=='#':
+						truevalues=[]
+						for trueval in line.split()[1:]:
+							truevalues.append(float(trueval))
+						#if truevalues<=MaxRange:
+						path='/'.join(self.location.split('/')[0:-1])+'/'+line.split()[0]
+						list_for_appending.append(PLSRfile(path, frame,buttons, truevalues))
+						list_for_appending[-1].load_file(list_for_appending)
+						'''if SubtractZero:
+							if path.split('/')[-1]=='0.txt':
+								yzero=np.array(frame.measurements[-1].y)
+							frame.measurements[-1].y=np.array(frame.measurements[-1].y)-yzero'''
+	################################################################################################
+	########################## function for plotting and data anlysis ##############################
+	################################################################################################
+
+class moduleClass():
+	filetypes=['DPT','dpt','list','txt','laser']
+	def __init__(self, fig, locations, frame, buttons):
+		#reload modules
+		if frame.module_reload_var.get():
+			if 'modules.libs.PLSRsave' in sys.modules: #reload each time it is run
+				importlib.reload(sys.modules['modules.libs.PLSRsave'])
+			if 'modules.libs.PLSRlib' in sys.modules: #reload each time it is run
+				importlib.reload(sys.modules['modules.libs.PLSRlib'])
+			if 'modules.libs.PLSRGeneticAlgorithm' in sys.modules: #reload each time it is run
+				importlib.reload(sys.modules['modules.libs.PLSRGeneticAlgorithm'])
+			if 'modules.libs.PLSRNN' in sys.modules: #reload each time it is run
+				importlib.reload(sys.modules['modules.libs.PLSRNN'])
+
+		#code for checking for memory leaks
+		'''import objgraph
+		if hasattr(frame,'most_common_types'):
+			old_most_common_types=frame.most_common_types
+		most_common_types=dict(objgraph.most_common_types(limit=200))
+		frame.most_common_types=most_common_types
+		if hasattr(frame,'most_common_types'):
+			for type in most_common_types:
+					if type in old_most_common_types:
+						diff=most_common_types[type]-old_most_common_types[type]
+						if not diff==0:
+							print(type,diff,most_common_types[type])'''
+		#	print('markerstyle',len( objgraph.by_type('MarkerStyle')))
+		'''obj = objgraph.by_type('SimpleNamespace')[-20]
+		objgraph.show_backrefs(obj, max_depth=20) # '''
+		global run #global keyword used to connect button clicks to class object
+		run=self
+		self.fig=fig
+		self.locations=locations
+		self.frame=frame
+		self.ui=buttons
+	def run(self):
+		fig=self.fig
+		locations=self.locations
+		frame=self.frame
+		ui=self.ui
+		eprint('running')
+		self.fig=fig
+		fig.clf()
+		self.frame=frame
+		# get variables from buttons
+		#buttons=frame.buttons
+		common_variables=types.SimpleNamespace()
+		common_variables.draw=draw
+		self.common_variables=common_variables
+		common_variables.keyword_lists={}
+		buttons=ui
+		if ui['reg_type'] == 'MLR':
+			None
+		elif ui['reg_type'] == 'PLSR':
+			common_variables.keyword_lists={'Latent variables':ui['Latent variables']}
+		elif ui['reg_type'] == 'PCR':
+			common_variables.keyword_lists={'Components':ui['Components']}
+		elif ui['reg_type'] == 'Tree':
+			common_variables.keyword_lists={'n_estimators':ui['n_estimators'],'Depth':ui['Depth']}
+		elif ui['reg_type'] == 'SVR':
+			if not ( ui['gamma']=='auto'):
+				ui['gamma']=float(ui['gamma'])
+			common_variables.keyword_lists={'kernel':ui['kernel'],'gamma':ui['gamma'],'degree':ui['degree'],
+				'coef0':ui['coef0'],'regularisation':ui['regularisation']}
+		elif ui['reg_type'] == 'ElasticNet':
+			common_variables.keyword_lists={'l1_ratio':ui['l1_ratio']}
+		elif ui['reg_type'] == 'NeuralNet':
+			common_variables.keyword_lists={'number_of_layers':ui['number_of_layers'],
+			'layer_size':ui['layer_size'],'drop_frac':ui['drop_frac'],'batch_size':ui['batch_size'],'epochs':ui['epochs']}
+		ui['do_moving_window']=0
+		ui['do_genetic_algorithm']=0
+		if buttons['regression_wavelength_selection']=='Moving Window':
+			ui['do_moving_window']=1
+		elif buttons['regression_wavelength_selection']=='Genetic Algorithm':
+			ui['do_genetic_algorithm']=1
+		if ui['use_SG']: #if useSG, don't do regular derivation, do SG derivation instead
+			ui['SGderivative']=ui['derivative']
+			ui['derivative']='Not der'
+		else:
+			ui['SGderivative']='Not der'
+		ui['multiprocessing']=1-(buttons['no_multiprocessing'])
+		makePyChemInputFile=float(buttons['make_pyChem_input_file'])
+		'''if ui['file_extension']=='.png':  #this code is meaningless, but illustrates may help someone understand how the code works
+			ui['file_extension']='.png'
+		elif ui['file_extension']=='.pdf':
+			ui['file_extension']='.pdf'
+		elif ui['file_extension']=='.svg':
+			ui['file_extension']='.svg'''
+		save_check_var=frame.save_check_var.get()
+		ui['save_check_var']=save_check_var
+		filename=frame.name_field_string.get()
+		self.filename=filename
+		#prepare figures for display (set correct number of axes, each pointing to the next axis)
+		'''
+		numax=(ui['do_moving_window']+ui['do_genetic_algorithm']+1)*len(range(ui['components_start'],ui['components_end']+1))
+		if ui['derivative']=='all':
+			numax=numax*3
+		if ui['use_SG']:
+			i=0
+			for filtersize in range(ui['SG_window_min'],ui['SG_window_max']+1,2):
+				for order in range(ui['SG_order_min'],ui['SG_order_max']+1):
+					if ui['SGderivative']=='Not der':
+						ders=[0]
+					elif ui['SGderivative']=='1st der':
+						ders=[1]
+					elif ui['SGderivative']=='2nd der':
+						ders=[2]
+					elif ui['SGderivative']=='all':
+						ders=[0,1,2]
+					for der in ders:
+						if der>order:
+							continue
+						else:
+							i+=1
+			numax=numax*i
+		numax=numax+1 #+1 for absorbance spectrum'''
+		######################### if crossval and moving window -> stop ###########
+		if ui['is_validation']=='X-val on training' and ui['do_moving_window']==1:
+			print("Use of x-validation with moving window is not supported")
+			return
+		axes=[]
+		'''if ui['two_plot_mode']:
+			numax=2
+		for mm in range(numax):
+			if numax>6:
+				axes.append(fig.add_subplot(3, int(numax/3+0.67), mm+1))
+			elif numax>2:
+				axes.append(fig.add_subplot(2, int(numax/2+0.51), mm+1))
+			else:
+				axes.append(fig.add_subplot(1, numax, mm+1))
+		for i in range(numax-1):
+			axes[i].nextax=axes[i+1]
+		axes[-1].nextax=axes[0]
+		ax = axes[0]
+		common_variables.ax=axes[1]
+		common_variables.axes=axes'''
+		common_variables.frame=frame
+		common_variables.fig=fig
+		################################################################################################
+		######################### Load data as training or validation ##################################
+		################################################################################################
+		if ui['is_validation']=='Training' or ui['is_validation']=='X-val on training':# if training or crossval -> deselect validation
+			frame.nav.deselect()
+			frame.nav.clear_color('color3')
+			frame.validation_files=frame.nav.get_paths_of_selected_items()
+		training_measurements=[]
+		common_variables.trainingfiles=[]
+		if hasattr(frame,'training_files') and len(frame.training_files)>0:
+			for file in frame.training_files:
+				temp=PLSRfile(file,frame, buttons)
+				temp.load_file(training_measurements) #if a list file, this will add all measurements in the list file to training_measurements
+				if temp.success==1:
+					training_measurements.append(temp) # if a single measurement, this will add it
+			frame.training=[] #member of frame, so that they are saved for when calibration is run
+			frame.trainingtruevalues=[]
+			for measurement in training_measurements:
+				frame.training.append(measurement.y)
+				frame.trainingtruevalues.append(measurement.trueValues)
+				common_variables.trainingfiles.append(measurement.location)
+			frame.wavenumbers=training_measurements[0].x
+			frame.training=np.array(frame.training)
+			frame.trainingtruevalues=np.array(frame.trainingtruevalues)
+			frame.validation=np.array([])
+			frame.validationtruevalues=np.array([])
+		else:
+			print('training set required')
+			return
+
+		validation_measurements=[]
+		common_variables.validationfiles=[]
+		if ui['is_validation']=='Training and Validation':
+			if hasattr(frame,'validation_files') and len(frame.validation_files)>0:
+				for file in frame.validation_files:
+					temp=PLSRfile(file,frame, buttons)
+					temp.load_file(validation_measurements) #if a list file, this will add all measurements in the list file to training_measurements
+					if temp.success==1:
+						validation_measurements.append(temp) # if a single measurement, this will add it
+				frame.validation=[] #member of frame, so that they are saved for when calibration is run
+				frame.validationtruevalues=[]
+				for measurement in validation_measurements:
+					frame.validation.append(measurement.y)
+					frame.validationtruevalues.append(measurement.trueValues)
+					common_variables.validationfiles.append(measurement.location)
+				frame.validation=np.array(frame.validation)
+				frame.validationtruevalues=np.array(frame.validationtruevalues)
+			else:
+				print('training and validation set, but no validation set in in put')
+				return
+		'''if ui['is_validation']=='X-val on training': #for historic reasons x-val operates on the validation set
+			frame.validation=frame.training
+			frame.validationtruevalues=frame.trainingtruevalues
+			common_variables.validationfiles=common_variables.trainingfiles
+			frame.training=np.array([])
+			frame.trainingtruevalues=np.array([])
+			common_variables.trainingfiles=[]'''
+
+		wavenumbers=frame.wavenumbers
+		training=frame.training #simplify syntax
+		trainingtruevalues=frame.trainingtruevalues #simplify syntax\
+		validation=frame.validation
+		validationtruevalues=frame.validationtruevalues
+
+		#simplify syntax
+		T=container()
+		V=container()
+		common_variables.T=T
+		common_variables.V=V
+		T.X=copy.deepcopy(frame.training)
+		V.X=copy.deepcopy(frame.validation)
+		T.Y=copy.deepcopy(frame.trainingtruevalues)
+		V.Y=copy.deepcopy(frame.validationtruevalues)
+		################################################################################################
+		################# set up folder, save log and temporary figure for saving ######################
+		################################################################################################
+
+		if save_check_var:
+			if not os.path.exists(filename):
+				os.makedirs(filename)
+			PLSRsave.SaveLogFile(filename,ui,common_variables)
+			common_variables.tempfig,common_variables.tempax=PLSRsave.make_tempfig(ui,frame)
+		################################################################################################
+		############################## calculate window ranges #########################################
+		################################################################################################
+		common_variables.datapoints, common_variables.datapointlists=PLSRlib.GetDatapoints(wavenumbers, ui)
+		################################################################################################
+		################################### save unprocessed spectra ###################################
+		################################################################################################
+		if ui['plot_spectra_before_preprocessing']:
+			eprint('plot abs')
+			if ui['save_check_var']:
+				PLSRsave.PlotAbsorbance(common_variables.tempax,common_variables.tempfig,common_variables.datapointlists,ui,wavenumbers,T.X,V.X)
+				plotFileName=filename+'/SpectraPrePreprocessing'
+				common_variables.tempfig.savefig(plotFileName.replace('.','p')+ui['file_extension'])
+				common_variables.tempax.cla()
+			ax=self.get_or_make_absorbance_ax()
+			draw(common_variables)
+		################################################################################################
+		################################### make pychem input file #####################################
+		################################################################################################
+		if makePyChemInputFile:
+			if ui['is_validation']=='Training and Validation':
+				PLSRsave.writePyChemFile(T.X,T.Y,validation,validationtruevalues)
+			else:
+				PLSRsave.writePyChemFile(T.X,T.Y,[],[])
+		################################################################################################
+		############################## set current control and remove data higher than maxrange ################################
+		################################################################################################
+		keepsamplesTraing=[]
+		#print(T.Y)
+		for i in range(len(T.Y)):
+			if not T.Y[i,ui['cur_col']] > ui['max_range']:
+				keepsamplesTraing.append(i)
+				if ui['filter'] == 'MA':
+					T.XX=copy.deepcopy(T.X)
+					T.X=MA(ui['filterN'],T.XX)
+				if ui['filter'] == 'Butterworth':
+					T.XX=copy.deepcopy(T.X)
+					T.X=butterworth(ui['filterN'],T.XX)
+				if ui['filter'] == 'Hamming':
+					T.XX=copy.deepcopy(T.X)
+					T.X=Hamming(ui['filterN'],T.XX)
+				if ui['normalize']:
+					T.X[i]=normalizeVec(T.X[i])
+		if len(T.Y)>0:
+			T.X=T.X[keepsamplesTraing,:]
+			T.Y=T.Y[keepsamplesTraing,ui['cur_col']]
+		if ui['is_validation']=='Training and Validation':
+			keepsamplesValidation=[]
+			for i in range(len(V.Y)):
+				if not V.Y[i,ui['cur_col']] > ui['max_range']:
+					keepsamplesValidation.append(i)
+					if ui['normalize']:
+						V.X[i]=normalizeVec(V.X[i])
+					if ui['filter'] == 'MA':
+						V.XX=copy.deepcopy(V.X)
+						V.X=MA(ui['filterN'],V.XX)
+					if ui['filter'] == 'Butterworth':
+						V.XX=copy.deepcopy(V.X)
+						V.X=butterworth(ui['filterN'],V.XX)
+					if ui['filter'] == 'Hamming':
+						V.XX=copy.deepcopy(V.X)
+						V.X=Hamming(ui['filterN'],V.XX)
+			V.X=V.X[keepsamplesValidation,:]
+			V.Y=V.Y[keepsamplesValidation,ui['cur_col']]
+		ui['cur_control_string']=frame.regressionCurControlTypes[ui['cur_col']]
+		################################################################################################
+		#################### calculate window ranges ##########################
+		################################################################################################
+		eprint('plot abs')
+		common_variables.datapoints, common_variables.datapointlists=PLSRlib.GetDatapoints(wavenumbers, ui)
+
+		################################################################################################
+		############################## save log and individual plots ###################################
+		################################################################################################
+
+		if save_check_var:
+			eprint('making plot for saving files')
+			common_variables.tempfig = frame.hidden_figure
+			common_variables.tempfig.set_size_inches(ui['fig_width'], ui['fig_height'])
+			common_variables.tempfig.set_dpi(ui['DPI'])
+			common_variables.tempfig.clf()
+			common_variables.tempax = common_variables.tempfig.add_subplot(1, 1, 1)
+			common_variables.tempfig.subplots_adjust(bottom=0.13,left=0.15, right=0.97, top=0.97)
+			eprint('done making plot')
+
+		if save_check_var:
+			if not os.path.exists(filename):
+				os.makedirs(filename)
+			#  save log
+			eprint('save log and plot abs')
+			tempax=common_variables.tempax
+			tempfig=common_variables.tempfig
+			PLSRsave.SaveLogFile(filename,ui,common_variables)
+			PLSRsave.PlotAbsorbance(tempax,tempfig,common_variables.datapointlists,ui,wavenumbers,T.X,V.X)
+			#common_variables.tempfig.savefig(filename+'/transmissionFull.pdf')
+			#common_variables.tempfig.savefig(filename+'/transmissionFull.svg')
+			plotFileName=filename+'/transmissionFull'
+			common_variables.tempfig.savefig(plotFileName.replace('.','p')+ui['file_extension'])
+			common_variables.tempax.cla()
+		ax=self.get_or_make_absorbance_ax()
+		draw(common_variables)
+
+
+
+		################################################################################################
+		############################## Fit data using PCR or PLSR ######################################
+		################################################################################################
+		# sgolay:
+		#if ui['is_validation']:
+		#ax=self.get_or_make_absorbance_ax()
+		draw(common_variables)
+
+		if 1: #ui['is_validation']:
+			#normalize
+			#EMSC
+			#baseline correction
+			self.sg_cases=Sgolay(T,V,wavenumbers,ui, filename+'/')
+			self.derivative_cases=[]
+			for sgcase in self.sg_cases:
+				self.derivative_cases+=Derivatives(sgcase,ui)
+			self.complete_cases=[]
+			for i,dercase in enumerate(self.derivative_cases):
+				#need to set data range in case of derrivative, rerunn in all cases anyways
+				datapoints, datapointlists=PLSRlib.GetDatapoints(dercase.wavenumbers, ui)
+				if ui['plot_spectra_after_preprocessing']:
+					ax=fns.add_axis(fig,ui['fig_per_row'],ui['max_plots'])
+					PLSRsave.PlotAbsorbance(ax,fig,datapointlists,ui,dercase.wavenumbers,dercase.T.X,dercase.V.X,dercase=dercase)
+					draw(common_variables)
+					if ui['save_check_var']:
+						PLSRsave.PlotAbsorbance(common_variables.tempax,common_variables.tempfig,datapointlists,ui,dercase.wavenumbers,dercase.T.X,dercase.V.X,dercase=dercase)
+						plotFileName=dercase.folder+'/SpectraPostPreprocessing'
+						common_variables.tempfig.savefig(plotFileName.replace('.','p')+ui['file_extension'])
+						common_variables.tempax.cla()
+				for E in [dercase.T,dercase.V]:
+					if len(E.Y)>0:
+						E.X=E.X[:,datapoints]
+				dercase.wavenumbers=dercase.wavenumbers[datapoints]
+				#create complete cases for all pemutations of keyword values in keyword_lists
+				for keyword_case in generate_keyword_cases(common_variables.keyword_lists):
+					self.complete_cases.append(types.SimpleNamespace())
+					self.complete_cases[-1].wavenumbers=dercase.wavenumbers
+					self.complete_cases[-1].folder=dercase.folder
+					self.complete_cases[-1].sg_config=dercase.sg_config
+					self.complete_cases[-1].derrivative=dercase.derrivative
+					self.complete_cases[-1].T=dercase.T
+					self.complete_cases[-1].V=dercase.V
+					self.complete_cases[-1].keywords=keyword_case
+			for case in self.complete_cases:
+				case.XvalRMSEs=[]
+				common_variables.keywords=case.keywords
+				#GeneticAlgorithm(ui,T,V,datapoints,components)
+				if ui['do_genetic_algorithm']==1:
+					'''GAobject=PLSRGeneticAlgorithm.GeneticAlgorithm(common_variables,ui,case.T,case.V,case.components)
+					GAdatapoints,bestAfterGeneration=GAobject.run(fns.add_axis(common_variables.fig,ui['fig_per_row'],ui['max_plots']),case.wavenumbers,case.folder)
+					case.GAT=copy.deepcopy(case.T)
+					case.GAV=copy.deepcopy(case.V)
+					for D in [case.GAT,case.GAV]:#set datapoints according to GA
+						if len(D.Y)>0:
+							D.X=D.X[:,GAdatapoints]
+					case.wavenumbers=case.wavenumbers[GAdatapoints]'''
+					Xval_cases=crossval(case.GAT,case.GAV,ui,case) # returns [T],[V] if not crossva, otherwise makes cases from validation dataset
+				else:
+					Xval_cases=crossval(case.T,case.V,ui,case) # returns [T],[V] if not crossva, otherwise makes cases from validation dataset
+				for Xval_case in Xval_cases:
+					#	ui.datapoints=runGeneticAlgorithm(dercase[0],dercase[1],dercase[2],dercase[3],dercase[4],dercase[5],dercase[6],dercase[7])
+					#def MW(T,V,wavenumbers, folder,ui,sg_config,curDerivative,supressplot):
+					self.last_reg_module,RMSe=MW(Xval_case,case,ui,common_variables)
+					case.XvalRMSEs.append(RMSe)
+					if Xval_case.supressplot==0:
+						if ui['is_validation']=='X-val on training':
+							case.xvalRMSE=np.sqrt(np.sum(np.array(case.XvalRMSEs)**2)/len(case.XvalRMSEs))
+							if ui['RMS_type']=='Combined RMSEP+RMSEC':
+								print('RMSEC+RMSEP = '+str(round(case.xvalRMSE,3))+' '+ui['unit'])
+							elif ui['RMS_type']=='RMSEC':
+								print('RMSEC = '+str(round(case.xvalRMSE,3))+' '+ui['unit'])
+							elif ui['RMS_type']=='RMSEP':
+								print('RMSEP = '+str(round(case.xvalRMSE,3))+' '+ui['unit'])
+						case.XvalRMSEs=[]
+				eprint('done')
+		#plt.close(common_variables.tempfig)
+		#del common_variables.tempfig
+		if save_check_var:
+			# save plot in window
+			fig.savefig(filename+'/'+'_'.join(filename.split('/')[1:])+ui['file_extension'])
+		print('Done')
+		return
+
+	def get_or_make_absorbance_ax(self):
+		ui=self.ui
+		ui['fig_per_row']=int(self.frame.buttons['fig_per_row'].get())
+		ui['max_plots']=int(self.frame.buttons['max_plots'].get())
+		wavenumbers=self.frame.wavenumbers
+		common_variables=self.common_variables
+		fig=common_variables.fig
+		for ax in fig.axes:
+			if hasattr(ax,'plot_type') and ax.plot_type=='absorbance':
+				return ax
+		ax=fns.add_axis(fig,ui['fig_per_row'],ui['max_plots'])
+		PLSRsave.PlotAbsorbance(ax,fig,common_variables.datapointlists,ui,wavenumbers,self.frame.training,self.frame.validation)
+		ax.plot_type='absorbance'
+		return ax
+
+	def plot_components_PLSR(self, event):
+		"""Function for making plots of the latent variables from PLSR. """
+		ui=self.ui
+		ui['fig_per_row']=int(self.frame.buttons['fig_per_row'].get())
+		ui['max_plots']=int(self.frame.buttons['max_plots'].get())
+		common_variables=self.common_variables
+		reg_module=self.last_reg_module
+		latent_variables=np.swapaxes(reg_module.x_weights_,0,1)
+		#print("this is working")
+		#print(latent_variables.shape)
+		ui=self.ui
+		wavenum=self.frame.wavenumbers[common_variables.datapoints]
+		wavenum=wavenum[reg_module.Wstart:reg_module.Wend]
+		if ui['save_check_var']:
+			tempax=common_variables.tempax
+			tempfig=common_variables.tempfig
+		for i, latent_variable in enumerate(latent_variables):
+			ax=fns.add_axis(common_variables.fig,ui['fig_per_row'],ui['max_plots'])
+			yax_label='Latent variable '+str(i+1)
+			PLSRsave.plot_component(ax,ui,wavenum,yax_label,latent_variable)
+			draw(common_variables)
+			if ui['save_check_var']:
+				tempax.cla()
+				PLSRsave.plot_component(tempax,ui,wavenum,yax_label,latent_variable)
+				plotFileName=self.filename+'/PLSR latent variable '+str(i+1)
+				tempfig.savefig(plotFileName.replace('.','p')+ui['file_extension'])
+		return
+
+	def plot_components_PCR(self,event):
+		"""Function for making plots of the principal components from PCR."""
+		ui=self.ui
+		ui['fig_per_row']=int(self.frame.buttons['fig_per_row'].get())
+		ui['max_plots']=int(self.frame.buttons['max_plots'].get())
+		common_variables=self.common_variables
+		reg_module=self.last_reg_module
+		components=reg_module.pca.components_[:reg_module.components]
+		#print(components)
+		ui=self.ui
+		wavenum=self.frame.wavenumbers[common_variables.datapoints]
+		wavenum=wavenum[reg_module.Wstart:reg_module.Wend]
+		if ui['save_check_var']:
+			tempax=common_variables.tempax
+			tempfig=common_variables.tempfig
+		for i, component in enumerate(components):
+			ax=fns.add_axis(common_variables.fig,ui['fig_per_row'],ui['max_plots'])
+			yax_label='Component '+str(i+1)
+			PLSRsave.plot_component(ax,ui,wavenum,yax_label,component)
+			draw(common_variables)
+			if ui['save_check_var']:
+				tempax.cla()
+				PLSRsave.plot_component(tempax,ui,wavenum,yax_label,component)
+				plotFileName=self.filename+'/PCR component '+str(i+1)
+				tempfig.savefig(plotFileName.replace('.','p')+ui['file_extension'])
+		linreg_coef=reg_module.linreg.coef_
+		linreg_coef=linreg_coef/sum(linreg_coef)
+		ax=fns.add_axis(common_variables.fig,ui['fig_per_row'],ui['max_plots'])
+		PLSRsave.plot_component_weights(ax,ui,linreg_coef)
+		if ui['save_check_var']:
+			tempax.cla()
+			PLSRsave.plot_component_weights(tempax,ui,linreg_coef)
+			plotFileName=self.filename+'/PCR Weights'
+			tempfig.savefig(plotFileName.replace('.','p')+ui['file_extension'])
+		draw(common_variables)
+
+		ax=fns.add_axis(common_variables.fig,ui['fig_per_row'],ui['max_plots'])
+		product=np.dot(np.transpose(components),linreg_coef)
+		yax_label=r'Comps$\cdot$weights'
+		PLSRsave.plot_component(ax,ui,wavenum,yax_label,product)
+		if ui['save_check_var']:
+			tempax.cla()
+			PLSRsave.plot_component(tempax,ui,wavenum,yax_label,product)
+			plotFileName=self.filename+'/PCR components times weights'
+			tempfig.savefig(plotFileName.replace('.','p')+ui['file_extension'])
+		draw(common_variables)
+
+		ax=self.get_or_make_absorbance_ax()
+		PLSRsave.plot_component_weights_twinx(ax,ui,wavenum,yax_label,product)
+		if ui['save_check_var']:
+			tempax=common_variables.tempax
+			tempfig=common_variables.tempfig
+			common_variables.tempfig.subplots_adjust(bottom=0.13,left=0.15, right=0.85, top=0.97)
+			PLSRsave.PlotAbsorbance(tempax,tempfig,common_variables,ui,self.frame.wavenumbers,self.frame.training,self.frame.validation)
+			twinx=PLSRsave.plot_component_weights_twinx(tempax,ui,wavenum,yax_label,product)
+			plotFileName=self.filename+'/transmission and PCR components times weights '
+			tempfig.savefig(plotFileName.replace('.','p')+ui['file_extension'])
+			tempax.cla()
+			twinx.remove()
+			common_variables.tempfig.subplots_adjust(bottom=0.13,left=0.15, right=0.97, top=0.97)
+		draw(common_variables)
+		return
+
+	#Function for plotting the feature importance of features in RandomForestRegressor
+	def plot_feature_importance(self,event):
+		"""Function for plotting the feature importance of features in the Random
+		Forest Regressor. Feature importance is shown in a plot overlaying the
+		data plot. The feature importance is also saved in a separate plot if the
+		"Save" option is selected."""
+		feature_importance=self.last_reg_module.regr.feature_importances_
+		common_variables=self.common_variables
+		wavenumbers=self.frame.wavenumbers
+		ui=self.ui
+		ui['fig_per_row']=int(self.frame.buttons['fig_per_row'].get())
+		ui['max_plots']=int(self.frame.buttons['max_plots'].get())
+		ax=self.get_or_make_absorbance_ax()
+		PLSRsave.add_feature_importance_twinx(ax,common_variables,ui,wavenumbers,feature_importance)
+		ax=fns.add_axis(common_variables.fig,ui['fig_per_row'],ui['max_plots'])
+		PLSRsave.plot_feature_importance(ax,common_variables,ui,wavenumbers,feature_importance)
+		if ui['save_check_var']:
+			tempax=common_variables.tempax
+			tempfig=common_variables.tempfig
+			common_variables.tempfig.subplots_adjust(bottom=0.13,left=0.15, right=0.85, top=0.97)
+			PLSRsave.PlotAbsorbance(tempax,tempfig,common_variables,ui,wavenumbers,self.frame.training,self.frame.validation)
+			twinx=PLSRsave.add_feature_importance_twinx(tempax,common_variables,self.ui,wavenumbers,feature_importance)
+			plotFileName=self.filename+'/transmissionFullAndFeatureImportance'
+			tempfig.savefig(plotFileName.replace('.','p')+ui['file_extension'])
+			tempax.cla()
+			twinx.remove()
+			common_variables.tempfig.subplots_adjust(bottom=0.13,left=0.15, right=0.97, top=0.97)
+			PLSRsave.plot_feature_importance(tempax,common_variables,ui,wavenumbers,feature_importance)
+			plotFileName=self.filename+'/FeatureImportance'
+			tempfig.savefig(plotFileName.replace('.','p')+ui['file_extension'])
+			tempax.cla()
+		draw(common_variables)
+	def reorder_plots(self,event):
+		ui=self.ui
+		ui['fig_per_row']=int(self.frame.buttons['fig_per_row'].get())
+		ui['max_plots']=int(self.frame.buttons['max_plots'].get())
+		fns.move_all_plots(self.fig,ui['fig_per_row'],ui['max_plots'])
+		draw(self.common_variables)
+
+	def addButtons():
+		buttons=[
+		{'key': 'RNNtab0name', 'type': 'tabname', 'text': 'Preprocessing', 'tab': 0} ,
+		{'key': 'RNNtab1name', 'type': 'tabname', 'text': 'Regression Methods', 'tab': 1} ,
+		{'key': 'RNNtab2name', 'type': 'tabname', 'text': 'Wavelength Selection', 'tab': 2} ,
+		{'key': 'RNNtab3name', 'type': 'tabname', 'text': 'Import Options', 'tab': 3} ,
+		{'key': 'RNNtab4name', 'type': 'tabname', 'text': 'Plot Options', 'tab': 4} ,
+		{'key': 'RNNtab5name', 'type': 'tabname', 'text': 'Other', 'tab': 5} ,
+		{'key': 'RegressionL0', 'type': 'label', 'text': 'Data import options: ', 'tab': 3, 'row': 0} ,
+		{'key': 'is_validation', 'type': 'radio:text', 'texts': ['Training', 'Training and Validation', 'X-val on training'], 'tab': 3, 'row': 0} ,
+		{'key': 'cross_val_N', 'type': 'txt:int', 'text': 'Number of data points for cross validation', 'default': '10', 'width': 4, 'tab': 3, 'row': 1} ,
+		{'key': 'cross_val_max_cases', 'type': 'txt:int', 'text': 'Iterations', 'default': '20', 'width': 4, 'tab': 3, 'row': 1} ,
+		{'key': 'windows', 'type': 'txt', 'text': 'Data range', 'default': ':,', 'width': 20, 'tab': 2, 'row': 0} ,
+		{'key': 'normalize', 'type': 'check', 'text': 'Normalize individual spectra before preprocessing', 'tab': 0, 'row': 0} ,
+		{'key': 'filter', 'type': 'radio:text', 'texts': ['No filter', 'MA', 'Butterworth', 'Hamming',], 'tab': 0, 'row': 9} ,
+		{'key': 'filterN', 'type': 'txt:int', 'default': '2', 'text': 'n', 'tab': 0, 'row': 9} ,
+		{'key': 'RegressionL0a', 'type': 'label', 'text': 'Column of data to use: ', 'tab': 3, 'row': 2} ,
+		{'key': 'max_range', 'type': 'txt:float', 'text': 'Maximum concentration for training set', 'default': '10000', 'width': 6, 'tab': 3, 'row': 3} ,
+		{'key': 'cur_col', 'type': 'radio', 'texts': ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], 'tab': 3, 'row': 2} ,
+		{'key': 'unit', 'type': 'txt', 'text': 'Concentration unit', 'default': 'mg/dl', 'width': 6, 'tab': 3, 'row': 4} ,
+		{'key': 'RegressionL1', 'type': 'label', 'text': 'Regression options: ', 'tab': 1, 'row': 1} ,
+		{'key': 'reg_type', 'type': 'radio:vertical:text', 'texts': ['MLR','PLSR', 'PCR', 'Tree', 'SVR', 'ElasticNet','NeuralNet'], 'tab': 1, 'row': 2} ,
+		{'key': 'Latent variables', 'type': 'txt:int:range', 'text': 'Latent variables', 'default': '2,3', 'width': 4, 'tab': 1, 'row': 3} ,
+		#{'key': 'components_end_PLSR', 'type': 'txt:int', 'text': 'Latent variables end', 'default': '2', 'width': 4, 'tab': 1, 'row': 3} ,
+		{'key': 'plot_components_PLSR', 'type': 'click', 'text': 'Plot latent variables', 'bind': plot_components_PLSR, 'tab': 1, 'row': 3} ,
+		{'key': 'Components', 'type': 'txt:int:range', 'text': 'components', 'default': '6,7', 'width': 4, 'tab': 1, 'row': 4} ,
+		#{'key': 'components_end_PCR', 'type': 'txt:int', 'text': 'components end', 'default': '6', 'width': 4, 'tab': 1, 'row': 4} ,
+		{'key': 'plot_components_PCR', 'type': 'click', 'text': 'Plot components', 'bind': plot_components_PCR, 'tab': 1, 'row': 4} ,
+		{'key': 'Depth', 'type': 'txt:int:range', 'text': 'Tree depth start', 'default': '10', 'width': 4, 'tab': 1, 'row': 5} ,
+		#{'key': 'components_end_Tree', 'type': 'txt:int', 'text': 'Tree depth end', 'default': '10', 'width': 4, 'tab': 1, 'row': 5} ,
+		{'key': 'n_estimators', 'type': 'txt:int:range', 'text': 'n_estimators', 'default': '200', 'width': 4, 'tab': 1, 'row': 5} ,
+		{'key': 'plot_feature_importance', 'type': 'click', 'text': 'Plot feature importance', 'bind': plot_feature_importance, 'tab': 1, 'row': 5} ,
+		{'key': 'kernel', 'type': 'radio:text', 'texts': ['Linear', 'Poly', 'Rbf', 'Sigmoid'], 'tab': 1, 'row': 6} ,
+		{'key': 'gamma', 'type': 'txt', 'text': 'gamma', 'default': 'auto', 'width': 5, 'tab': 1, 'row': 6} ,
+		{'key': 'degree', 'type': 'txt:int:range', 'text': 'degree', 'default': '3', 'width': 2, 'tab': 1, 'row': 6} ,
+		{'key': 'coef0', 'type': 'txt:float:range', 'text': 'coef0', 'default': '0.0', 'width': 4, 'tab': 1, 'row': 6} ,
+		{'key': 'regularisation', 'type': 'txt:float:range', 'text': 'regularisation', 'default': '1.0', 'width': 4, 'tab': 1, 'row': 6} ,
+		{'key': 'l1_ratio', 'type': 'txt:float:range', 'text': 'l1_ratio', 'default': '0.5', 'width': 4, 'tab': 1, 'row': 7} ,
+		{'key': 'number_of_layers', 'type': 'txt:int:range', 'text': '# of layers', 'default': '5', 'width': 5, 'tab': 1, 'row': 8} ,
+		{'key': 'layer_size', 'type': 'txt:int:range', 'text': 'Layer size', 'default': '64', 'width': 2, 'tab': 1, 'row': 8} ,
+		{'key': 'drop_frac', 'type': 'txt:float:range', 'text': 'Drop', 'default': '0.2', 'width': 4, 'tab': 1, 'row': 8} ,
+		{'key': 'batch_size', 'type': 'txt:int:range', 'text': 'Batch size', 'default': '18000', 'width': 4, 'tab': 1, 'row': 8} ,
+		{'key': 'epochs', 'type': 'txt:int:range', 'text': 'Epochs', 'default': '4000', 'width': 4, 'tab': 1, 'row': 8} ,
+		{'key': 'RMS_type', 'type': 'radio:text', 'texts': ['Combined RMSEP+RMSEC', 'RMSEC', 'RMSEP'], 'tab': 1, 'row': 9} ,
+		{'key': 'coeff_det_type', 'type': 'radio:text', 'texts': ['R^2', 'R'], 'tab': 1, 'row': 9} ,
+		{'key': 'scaling', 'type': 'check', 'text': 'Scaling', 'tab': 0, 'row': 2} ,
+		{'key': 'RegressionL2', 'type': 'label', 'text': 'SG and derivative: ', 'tab': 0, 'row': 3} ,
+		{'key': 'use_SG', 'type': 'check', 'text': 'useSG', 'tab': 0, 'row': 3} ,
+		{'key': 'SG_window_min', 'type': 'txt:int', 'text': 'SG:MinW ', 'default': '9', 'width': 4, 'tab': 0, 'row': 3} ,
+		{'key': 'SG_window_max', 'type': 'txt:int', 'text': 'SG:MaxW ', 'default': '11', 'width': 4, 'tab': 0, 'row': 3} ,
+		{'key': 'SG_order_min', 'type': 'txt:int', 'text': 'SG Order Min', 'default': '1', 'width': 4, 'tab': 0, 'row': 3} ,
+		{'key': 'SG_order_max', 'type': 'txt:int', 'text': 'SG Order Max', 'default': '1', 'width': 4, 'tab': 0, 'row': 3} ,
+		{'key': 'derivative', 'type': 'radio:text', 'texts': ['Not der', '1st der', '2nd der', 'all'], 'tab': 0, 'row': 4} ,
+		{'key': 'plot_spectra_before_preprocessing', 'type': 'check', 'text': 'Plot spectra before preprocessing', 'tab': 0, 'row': 5, 'default':True} ,
+		{'key': 'plot_spectra_after_preprocessing', 'type': 'check', 'text': 'Plot spectra after preprocessing', 'tab': 0, 'row': 6} ,
+		{'key': 'RegressionL3', 'type': 'label', 'text': 'Type of wavelength selection:', 'tab': 2, 'row': 1} ,
+		{'key': 'regression_wavelength_selection', 'type': 'radio:vertical:text', 'texts': ['No wavelength selection', 'Moving Window', 'Genetic Algorithm'], 'tab': 2, 'row': 1} ,
+		{'key': 'moving_window_min', 'type': 'txt:float', 'text': 'Min window', 'default': '30', 'width': 4, 'tab': 2, 'row': 2} ,
+		{'key': 'moving_window_max', 'type': 'txt:float', 'text': 'Max window', 'default': '100', 'width': 4, 'tab': 2, 'row': 2} ,
+		{'key': 'RegressionL4', 'type': 'label', 'text': 'GA options ', 'tab': 2, 'row': 3} ,
+		{'key': 'GA_number_of_individuals', 'type': 'txt:int', 'text': 'GA num. Individuals', 'default': '100', 'width': 4, 'tab': 2, 'row': 3} ,
+		{'key': 'GA_crossover_rate', 'type': 'txt:float', 'text': 'GA crossover rate', 'default': '0.8', 'width': 4, 'tab': 2, 'row': 3} ,
+		{'key': 'GA_mutation_rate', 'type': 'txt:float', 'text': 'GA mutation rate', 'default': '0.001', 'width': 6, 'tab': 2, 'row': 3} ,
+		{'key': 'GA_max_number_of_generations', 'type': 'txt:int', 'text': 'GA generations', 'default': '20', 'width': 3, 'tab': 2, 'row': 3} ,
+		{'key': 'GA_cross_val_N', 'type': 'txt:int', 'text': 'GA cross val fold', 'default': '2', 'width': 4, 'tab': 2, 'row': 3} ,
+		{'key': 'GAcross_val_max_cases', 'type': 'txt:int', 'text': 'GA cross val num cases', 'default': '1', 'width': 4, 'tab': 2, 'row': 3} ,
+		{'key': 'verbose', 'type': 'txt:int:range', 'text': 'Text lines', 'default': '1,2,3,4,5,6,7,8,9,10', 'width': 20, 'tab': 4, 'row': 4} ,
+		{'key': 'fig_per_row', 'type': 'txt:int', 'text': 'Figures per row', 'default': '2', 'width': 4, 'tab': 4, 'row': 4} ,
+		{'key': 'reorder_plots', 'type': 'click', 'text': 'Reorder plots', 'bind': reorder_plots, 'tab': 4, 'row': 4} ,
+		{'key': 'max_plots', 'type': 'txt:int', 'text': 'Max number of plots', 'default': '-1', 'width': 3, 'tab': 4, 'row': 4} ,
+		{'key': 'grid', 'type': 'check', 'text': 'Grid', 'tab': 4, 'row': 4} ,
+		{'key': 'fontsize', 'type': 'txt:int', 'text': 'Font size', 'default': '12', 'width': 4, 'tab': 4, 'row': 5} ,
+		{'key': 'DPI', 'type': 'txt:int', 'text': 'dpi', 'default': '80', 'width': 4, 'tab': 4, 'row': 5} ,
+		{'key': 'fig_width', 'type': 'txt:float', 'text': 'Figure Width [inches]', 'default': '6', 'width': 4, 'tab': 4, 'row': 5} ,
+		{'key': 'fig_height', 'type': 'txt:float', 'text': 'Figure Height [inches]', 'default': '4', 'width': 4, 'tab': 4, 'row': 5} ,
+		{'key': 'make_pyChem_input_file', 'type': 'check', 'text': 'Make pyChem file', 'tab': 4, 'row': 6} ,
+		{'key': 'file_extension', 'type': 'radio:text', 'texts': [ '.svg', '.png', '.pdf'], 'tab': 4, 'row': 7} ,
+		{'key': 'no_multiprocessing', 'type': 'radio', 'texts': ['use multiprocessing', 'do not use multiprocessing'], 'tab': 5, 'row': 0} ,
+		{'key': 'set_training', 'type': 'click', 'text': 'Set Training', 'bind': set_training,'color':'color1', 'tab': 10, 'row': 0} ,
+		{'key': 'set_validation', 'type': 'click', 'text': 'Set Validation', 'bind': set_validation,'color':'color3', 'tab': 10, 'row': 0} ,
+		]
+		return buttons
+def generate_keyword_cases(keyword_lists):
+	keys = list(keyword_lists.keys())
+	for key in keys:
+		keyword_lists[key]=list(keyword_lists[key])
+	new_combinations=[{}]
+	for key in keys:
+		cur_keyword_list=keyword_lists[key]
+		old_combinations=new_combinations
+		new_combinations=[]
+		for i, di in enumerate(old_combinations):
+			for j in range(len((cur_keyword_list))-1):
+				new_combinations.append(copy.deepcopy(di))
+				new_combinations[-1][key]=cur_keyword_list[j]
+			new_combinations.append(di)
+			new_combinations[-1][key]=cur_keyword_list[-1]
+	return new_combinations
+
+def set_training(event):
+    """Sets the training data set(s) in the GUI."""
+    frame=event.widget.master.master.master
+    frame.nav.clear_color('color1')
+    frame.nav.color_selected('color1')
+    frame.training_files=frame.nav.get_paths_of_selected_items()
+    frame.nav.deselect()
+    return
+
+def set_validation(event):
+    """Sets the validation data set(s) in the GUI."""
+    frame=event.widget.master.master.master
+    frame.nav.clear_color('color3')
+    frame.nav.color_selected('color3')
+    frame.validation_files=frame.nav.get_paths_of_selected_items()
+    frame.nav.deselect()
+    return
+
+def reorder_plots(event):
+	global run
+	run.reorder_plots(event)
+	return
+def plot_components_PLSR(event):
+	global run
+	if run.ui['reg_type'] == 'PLSR':
+		run.plot_components_PLSR(event)
+	return
+def plot_components_PCR(event):
+	global run
+	if run.ui['reg_type'] == 'PCR':
+		run.plot_components_PCR(event)
+	return
+def plot_feature_importance(event):
+	global run
+	if run.ui['reg_type'] == 'Tree':
+		run.plot_feature_importance(event)
+	return

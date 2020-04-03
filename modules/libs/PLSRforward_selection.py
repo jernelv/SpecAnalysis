@@ -16,8 +16,8 @@ from . import PLSRregressionMethods
 class forwardSelection():
 	def __init__(self,common_variables,ui,case):
 		self.case=case
-		self.MLR_regModule = PLSRregressionMethods.getRegModule('MLR',case.keywords,ui['scaling'],ui['mean_centering'])
-		self.regModule = PLSRregressionMethods.getRegModule(ui['reg_type'],case.keywords,ui['scaling'],ui['mean_centering'])
+		self.MLR_regModule = PLSRregressionMethods.getRegModule('MLR',case.keywords)
+		self.regModule = PLSRregressionMethods.getRegModule(ui['reg_type'],case.keywords)
 		self.ui=ui
 		#self.independentVariables=con.GAIndependentVariables
 		'''self.numberOfIndividuals=ui['GA_number_of_individuals']#100#

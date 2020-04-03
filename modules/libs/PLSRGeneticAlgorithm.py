@@ -14,7 +14,7 @@ from . import PLSRregressionMethods
 class GeneticAlgorithm():
 	def __init__(self,common_variables,ui,case):
 		self.case=case
-		self.reg_module=PLSRregressionMethods.getRegModule(ui['reg_type'],case.keywords,ui['scaling'],ui['mean_centering'])
+		self.reg_module=PLSRregressionMethods.getRegModule(ui['reg_type'],case.keywords)
 		self.ui=ui
 		#self.independentVariables=con.GAIndependentVariables
 		self.numberOfIndividuals=ui['GA_number_of_individuals']#100#

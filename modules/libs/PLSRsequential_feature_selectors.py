@@ -15,8 +15,8 @@ from . import PLSRregressionMethods
 class sequentialFeatureSelector():
 	def __init__(self,common_variables,ui,case,draw_fun):
 		self.case=case
-		self.MLR_reg_module = PLSRregressionMethods.getRegModule('MLR',case.keywords,ui['scaling'],ui['mean_centering'])
-		self.reg_module = PLSRregressionMethods.getRegModule(ui['reg_type'],case.keywords,ui['scaling'],ui['mean_centering'])
+		self.MLR_reg_module = PLSRregressionMethods.getRegModule('MLR',case.keywords)
+		self.reg_module = PLSRregressionMethods.getRegModule(ui['reg_type'],case.keywords)
 		self.ui=ui
 		#self.independentVariables=con.GAIndependentVariables
 		'''self.numberOfIndividuals=ui['GA_number_of_individuals']#100#

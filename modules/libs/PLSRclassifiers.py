@@ -38,9 +38,7 @@ def get_classifier(common_variables,ui):
     if ui['classifier_type'] == 'SVC':
         if not ( ui['SVCgamma']=='auto'):
             ui['SVCgamma']=float(ui['SVCgamma'])
-        else:
-            ui['SVCgamma']=[ui['SVCgamma']]
-        common_variables.keyword_lists={'kernel':[ui['SVCkernel']],'gamma':ui['SVCgamma'],'degree':ui['SVCdegree'],
+        common_variables.keyword_lists={'kernel':[ui['SVCkernel']],'gamma':[ui['SVCgamma']],'degree':ui['SVCdegree'],
             'coef0':ui['SVCcoef0'],'regularisation':ui['SVCregularisation']}
     elif ui['classifier_type'] == 'PLS-DA':
         common_variables.keyword_lists={'latent_variables':ui['PLS-DA_latent_variables']}
@@ -56,7 +54,9 @@ def get_classifier(common_variables,ui):
     # declare type of classifier
     common_variables.keyword_lists['classifier_type']=[ui['classifier_type']]
 
-def get_classifier_module(reg_type,keywords,Scaling,mean_centering=True):
+def get_classifier_module(reg_type,keywords):
+    Scaling=keywords['scaling']
+    mean_centering=keywords['mean_centering']
     if keywords['classifier_type']=='SVC':
         kernel=keywords['kernel']
         gamma=keywords['gamma']

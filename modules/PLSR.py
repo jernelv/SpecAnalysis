@@ -11,6 +11,7 @@ from scipy import signal
 from sklearn.model_selection import ShuffleSplit
 from sklearn.model_selection import LeaveOneOut
 from sklearn.linear_model import ElasticNet
+import sklearn.metrics
 import types
 from math import sqrt
 import copy
@@ -100,7 +101,7 @@ def crossval(T,V,ui,case):
 		case.Xval_cases[-1].supressplot=0
 	return case.Xval_cases
 
-def run_reg_module(Xval_case,case,ui,common_variables,active_wavenumers,keywords={}):
+def run_reg_module(Xval_case,case,ui,common_variables,active_wavenumers,logfile,keywords={}):
 	T=Xval_case.T
 	V=Xval_case.V
 	supressplot=Xval_case.supressplot
@@ -120,7 +121,7 @@ def run_reg_module(Xval_case,case,ui,common_variables,active_wavenumers,keywords
 		common_variables.tempax.fig=common_variables.tempfig
 	#plot best result
 	# or only result if not MW
-	reg_module=PLSRregressionMethods.getRegModule(ui['reg_type'],keywords,ui['scaling'],ui['mean_centering'])
+	reg_module=PLSRregressionMethods.getRegModule(ui['reg_type'],keywords)
 	#reg_module.active_wavenumers=active_wavenumers
 	# get RMSe
 	for E in [T,V]:
@@ -166,6 +167,9 @@ def run_reg_module(Xval_case,case,ui,common_variables,active_wavenumers,keywords
 		avg=np.average(X_pred-X_Y)
 		n=len(X_pred)
 		Xval_case.SEP=np.sqrt(np.sum( ( X_pred-X_Y-avg   )**2 )/(n-1))
+		Xval_case.mean_absolute_error=sklearn.metrics.mean_absolute_error(X_Y,X_pred)
+		Xval_case.mean_absolute_error_percent=100/len(X_Y) * np.sum(np.abs(X_Y-X_pred)/X_Y)
+
 	else:
 		Xval_case.R_squared=0
 		Xval_case.SEP=0
@@ -184,7 +188,8 @@ def run_reg_module(Xval_case,case,ui,common_variables,active_wavenumers,keywords
 		frac_cor_lab=-1
 	#plot
 	if not supressplot:
-		PLSRsave.plot_regression(Xval_case,case,ui,fns.add_axis(common_variables.fig,ui['fig_per_row'],ui['max_plots']),keywords,RMSe, coeff_det,frac_cor_lab=frac_cor_lab)
+		if not ui['do_not_save_plots']:
+			PLSRsave.plot_regression(Xval_case,case,ui,fns.add_axis(common_variables.fig,ui['fig_per_row'],ui['max_plots']),keywords,RMSe, coeff_det,frac_cor_lab=frac_cor_lab)
 		if ui['save_check_var']:
 			if not ui['do_not_save_plots']:
 				PLSRsave.plot_regression(Xval_case,case,ui,common_variables.tempax,keywords,RMSe, coeff_det,frac_cor_lab=frac_cor_lab)
@@ -193,7 +198,7 @@ def run_reg_module(Xval_case,case,ui,common_variables,active_wavenumers,keywords
 				#common_variables.tempfig.savefig(folder+'Best'+'Comp'+str(components)+'Width'+str(round(Wwidth,1))+'Center'+str(round(Wcenter,1))+'.svg')
 				plotFileName=case.folder+ui['reg_type']+PLSRsave.get_unique_keywords_formatted(common_variables.keyword_lists,case.keywords).replace('.','p')
 				common_variables.tempfig.savefig(plotFileName+ui['file_extension'])
-			PLSRsave.add_line_to_logfile(case.folder+'results_table',Xval_case,case,ui,keywords,RMSe,coeff_det,frac_cor_lab=frac_cor_lab)
+			PLSRsave.add_line_to_logfile(logfile,Xval_case,case,ui,keywords,RMSe,coeff_det,frac_cor_lab=frac_cor_lab)
 		#draw(common_variables)
 	return reg_module, RMSe
 
@@ -237,7 +242,157 @@ class moduleClass():
 		self.frame=frame
 		self.ui=ui
 
+	def clear_memory(self):
+		safe_keys=['fig','locations','frame','ui','wrapper_i','wrapper_max']
+		keys=[]
+		for key in self.__dict__:
+			keys.append(key)
+		for key in keys:
+			if not key in safe_keys:
+				delattr(self,key)
 	def run(self):
+		if not self.ui['use_wrapper']:
+			self.run_wrapper_case()
+		else:
+			import gc
+			gc.collect() #collect garbage to free memory from last run
+			self.wrapper_i=1
+			self.wrapper_max=len(self.ui['binning'])
+			if self.ui['filter']=='Try all': self.wrapper_max*=6
+			if self.ui['try_all_scatter_correction']: self.wrapper_max*=4
+			if self.ui['try_all_normalize']: self.wrapper_max*=4
+			if self.ui['scaling']=='Try all': self.wrapper_max*=2
+			if self.ui['mean_centering']=='Try all': self.wrapper_max*=2
+			bins=self.ui['binning']
+			for bin in bins:
+				self.ui['binning']=[bin]
+				self.scatter_cor_wrapper()
+			self.ui['binning']=bins
+
+	def scatter_cor_wrapper(self):
+		#{'key': 'filter', 'type': 'radio:text', 'texts': ['No filter', 'MA', 'Butterworth', 'Hamming','Fourier','Try all'], 'tab': 0, 'row': 7} ,
+		if self.ui['filter']=='Try all':
+			self.ui['use_SG']='No SG'
+			for f in ['No filter', 'MA', 'Butterworth', 'Hamming','Fourier','SG']:
+				#print(self.__dict__)
+				self.ui['filter']=f
+				if self.ui['filter']=='SG':
+					self.ui['filter']='No filter'
+					self.ui['use_SG']='use SG'
+				if self.ui['try_all_scatter_correction']:
+					self.ui['try_all_scatter_correction']=0
+					self.ui['normalize']=0
+					self.ui['SNV_key']=0
+					self.ui['MSC_key']=0
+					self.normalize_wrapper()
+					self.ui['normalize']=1
+					self.normalize_wrapper()
+					self.ui['normalize']=0
+					self.ui['SNV_key']=1
+					self.normalize_wrapper()
+					self.ui['SNV_key']=0
+					self.ui['MSC_key']=1
+					self.normalize_wrapper()
+					self.ui['MSC_key']=0
+					self.ui['try_all_scatter_correction']=1
+				else:
+					self.normalize_wrapper()
+				self.ui['use_SG']='No SG'
+			self.ui['filter']='Try all'
+		else:
+			if self.ui['try_all_scatter_correction']:
+				self.ui['try_all_scatter_correction']=0
+				self.ui['normalize']=0
+				self.ui['SNV_key']=0
+				self.ui['MSC_key']=0
+				self.normalize_wrapper()
+				self.ui['normalize']=1
+				self.normalize_wrapper()
+				self.ui['normalize']=0
+				self.ui['SNV_key']=1
+				self.normalize_wrapper()
+				self.ui['SNV_key']=0
+				self.ui['MSC_key']=1
+				self.normalize_wrapper()
+				self.ui['MSC_key']=0
+				self.ui['try_all_scatter_correction']=1
+			else:
+				self.normalize_wrapper()
+
+	def normalize_wrapper(self):
+		ui=self.ui
+		if not ui['try_all_normalize']:
+			self.scaling_wrapper()
+		else:
+			ui['try_all_normalize']=0
+			#ui['normalize']=0
+			ui['baseline_value']=0
+			ui['baseline_linear']=0
+			ui['baseline_background']=0
+			ui['derivative']='Not der'
+
+			#
+			self.scaling_wrapper()
+			#
+			#ui['normalize']=1
+			#self.scaling_wrapper()
+			#ui['normalize']=0
+			#
+			ui['baseline_value']=1
+			self.scaling_wrapper()
+			ui['baseline_value']=0
+			#
+			ui['baseline_linear']=1
+			self.scaling_wrapper()
+			ui['baseline_linear']=0
+			#
+			ui['baseline_background']=1
+			self.scaling_wrapper()
+			ui['baseline_background']=0
+			#
+			ui['derivative']='1st der'
+			self.scaling_wrapper()
+			ui['derivative']='2nd der'
+			self.scaling_wrapper()
+			ui['derivative']='Not der'
+
+			ui['try_all_normalize']=1
+		return
+
+    #{'key': 'scaling', 'type': 'radio:text', 'texts': ['No scaling', 'Scaling','Try all'], 'tab': 0, 'row': 2}
+	def scaling_wrapper(self):
+		if not self.ui['scaling']=='Try all':
+			self.mean_centering_wrapper()
+		else:
+			self.ui['scaling']='No scaling'
+			self.mean_centering_wrapper()
+			self.ui['scaling']='Scaling'
+			self.mean_centering_wrapper()
+			self.ui['scaling']='Try all'
+
+	#{'key': 'mean_centering', 'type': 'radio:text', 'texts': ['No mean centering', 'Mean centering','Try all'], 'tab': 0, 'row': 2} ,
+	def mean_centering_wrapper(self):
+		if not self.ui['mean_centering']=='Try all':
+			self.clear_memory()
+			print('wrapper i = ',self.wrapper_i, ' of ', self.wrapper_max)
+			self.wrapper_i+=1
+			self.run_wrapper_case()
+		else:
+			self.ui['mean_centering']='No mean centering'
+			self.clear_memory()
+			print('wrapper i = ',self.wrapper_i, ' of ', self.wrapper_max)
+			self.wrapper_i+=1
+			self.run_wrapper_case()
+			self.ui['mean_centering']='Mean centering'
+			self.clear_memory()
+			print('wrapper i = ',self.wrapper_i, ' of ', self.wrapper_max)
+			self.wrapper_i+=1
+			self.run_wrapper_case()
+			self.ui['mean_centering']='Try all'
+
+
+
+	def run_wrapper_case(self):
 		fig=self.fig
 		locations=self.locations
 		frame=self.frame
@@ -427,6 +582,7 @@ class moduleClass():
 					self.complete_cases[-1].derrivative=dercase.derrivative
 					self.complete_cases[-1].T=dercase.T
 					self.complete_cases[-1].V=dercase.V
+					self.complete_cases[-1].preprocessing_done=dercase.preprocessing_done
 					self.complete_cases[-1].keywords=keyword_case
 			if ui['reg_type']=='None':
 				break
@@ -461,12 +617,12 @@ class moduleClass():
 				for Xval_case in Xval_cases:
 					#	ui.datapoints=runGeneticAlgorithm(dercase[0],dercase[1],dercase[2],dercase[3],dercase[4],dercase[5],dercase[6],dercase[7])
 					#def MW(T,V,wavenumbers, folder,ui,sg_config,curDerivative,supressplot):
-					if  ui['save_check_var']:
+					if  ui['save_check_var'] and not ui['do_not_save_plots']:
 						active_wavenumbers_file=case.folder+ui['reg_type']+PLSRsave.get_unique_keywords_formatted(common_variables.keyword_lists,case.keywords).replace('.','p')+'active_wavenumers.dpb'
 						PLSRsave.save_active_wavenumbers(active_wavenumbers_file,case.wavenumbers,active_wavenumers)
 					case.active_wavenumers=active_wavenumers
 					self.draw()
-					self.last_reg_module, RMSe = run_reg_module(Xval_case,case,ui,common_variables,active_wavenumers,keywords={})
+					self.last_reg_module, RMSe = run_reg_module(Xval_case,case,ui,common_variables,active_wavenumers,self.filename+'/results_table',keywords={})
 					self.draw()
 					self.last_complete_case = case
 					self.last_Xval_case = Xval_case
@@ -546,6 +702,7 @@ class moduleClass():
 		# save options
 		{'key': 'make_pyChem_input_file', 'type': 'check', 'text': 'Make pyChem file', 'tab': 4, 'row': 9} ,
 		{'key': 'do_not_save_plots', 'type': 'check', 'text': 'do not save plots', 'tab': 4, 'row': 8} ,
+		{'key': 'use_wrapper', 'type': 'check', 'text': 'use wrapper', 'tab': 4, 'row': 8} ,
 
 
 		# debugging options
@@ -553,8 +710,9 @@ class moduleClass():
 		{'key': 'no_multiprocessing', 'type': 'radio', 'texts': ['use multiprocessing', 'do not use multiprocessing'], 'tab': 5, 'row': 0},
 
 		# result
-		{'key': 'RMS_type', 'type': 'radio:text', 'texts': ['Default', 'RMSEC', 'RMSEP'], 'tab': 3, 'row': 9} ,
-		{'key': 'coeff_det_type', 'type': 'radio:text', 'texts': ['R^2', 'R'], 'tab': 3, 'row': 9} ,
+		{'key': 'RMS_type', 'type': 'radio:text', 'texts': ['Default', 'RMSEC', 'RMSEP'], 'tab': 3, 'row': 6} ,
+		{'key': 'coeff_det_type', 'type': 'radio:text', 'texts': ['R^2', 'R'], 'tab': 3, 'row': 7} ,
+		{'key': 'SEP_MAE_or_%MAE', 'type': 'radio:text', 'texts': ['SEP', 'MAE','%MAE'], 'tab': 3, 'row': 8} ,
 
 		# declare input
 		{'key': 'set_training', 'type': 'click', 'text': 'Set Training', 'bind': set_training,'color':'color1', 'tab': 10, 'row': 0} ,

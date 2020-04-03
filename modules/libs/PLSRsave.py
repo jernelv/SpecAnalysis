@@ -65,7 +65,11 @@ def PlotAbsorbance(ax,fig,active_wavenumers,ui,wavenumbers,training,validation=[
 		ylimits=ax.get_ylim()
 		ypos=0.95
 		dy=-0.05
-		if ui['use_SG']:
+		for s in dercase.preprocessing_done:
+			ax.text(get_pos(xlimits,0.6),get_pos(ylimits,ypos),s)
+			ypos+=dy
+
+		'''if dercase.used_sg:
 			ax.text(get_pos(xlimits,0.6),get_pos(ylimits,ypos),'SGFilterSize: '+str(sg_config.curSGFiltersize))
 			ypos+=dy
 			ax.text(get_pos(xlimits,0.6),get_pos(ylimits,ypos),'SGOrder: '+str(sg_config.curSGOrder))
@@ -85,7 +89,7 @@ def PlotAbsorbance(ax,fig,active_wavenumers,ui,wavenumbers,training,validation=[
 				ypos+=dy
 		if ui['normalize']:
 			ax.text(get_pos(xlimits,0.6),get_pos(ylimits,ypos),'Normalized individual spectra')
-			ypos+=dy
+			ypos+=dy'''
 
 def get_datapointlists(active_wavenumers):
 	datapointlists=[]
@@ -274,7 +278,12 @@ def plot_regression(Xval_case,case,ui,ax,keywords,RMSe, coeff_det,frac_cor_lab=-
 				ax.text(get_pos(xlimits,0.6,plot_type),get_pos(ylimits,ypos,plot_type),'R = '+custom_round(coeff_det,4))
 			ypos+=dy
 	if i in ui['verbose']:
-		ax.text(get_pos(xlimits,0.6,plot_type),get_pos(ylimits,ypos,plot_type),'SEP = '+custom_round(Xval_case.SEP,4))
+		if ui['SEP_MAE_or_%MAE']=='SEP':
+			ax.text(get_pos(xlimits,0.6,plot_type),get_pos(ylimits,ypos,plot_type),'SEP = '+custom_round(Xval_case.SEP,4))
+		if ui['SEP_MAE_or_%MAE']=='MAE':
+			ax.text(get_pos(xlimits,0.6,plot_type),get_pos(ylimits,ypos,plot_type),'MAE = '+custom_round(Xval_case.mean_absolute_error,4))
+		if ui['SEP_MAE_or_%MAE']=='%MAE':
+			ax.text(get_pos(xlimits,0.6,plot_type),get_pos(ylimits,ypos,plot_type),'%MAE = '+custom_round(Xval_case.mean_absolute_error_percent,2)+' %')
 		ypos+=dy
 	i+=1
 	if i in ui['verbose']:
@@ -285,6 +294,10 @@ def plot_regression(Xval_case,case,ui,ax,keywords,RMSe, coeff_det,frac_cor_lab=-
 		ax.text(get_pos(xlimits,0.6,plot_type),get_pos(ylimits,ypos,plot_type),ui['reg_type'])
 		ypos+=dy
 	i+=1
+	for s in case.preprocessing_done:
+		ax.text(get_pos(xlimits,0.6,plot_type),get_pos(ylimits,ypos,plot_type),s)
+		ypos+=dy
+	'''
 	if i in ui['verbose']:
 		if curDerivative==1:
 			ax.text(get_pos(xlimits,0.6,plot_type),get_pos(ylimits,ypos,plot_type),'First Derivative')
@@ -323,7 +336,7 @@ def plot_regression(Xval_case,case,ui,ax,keywords,RMSe, coeff_det,frac_cor_lab=-
 			ax.text(get_pos(xlimits,0.6,plot_type),get_pos(ylimits,ypos,plot_type),'window multiplier: '+custom_round(ui['fourier_window_size_multiplier'],2))
 			ypos+=dy
 			ax.text(get_pos(xlimits,0.6,plot_type),get_pos(ylimits,ypos,plot_type),'reverse fourier window: '+str(ui['reverse_fourier_window']))
-			ypos+=dy
+			ypos+=dy'''
 	if i in ui['verbose']:
 		if frac_cor_lab==-1:
 			if ui['is_validation']=='X-val on training':
@@ -409,8 +422,11 @@ def add_line_to_logfile(filename,Xval_case,case,ui,keywords,RMSe,coeff_det,frac_
 		elif ui['coeff_det_type']=='R':
 			outstr+='R\t'+custom_round(coeff_det,4)+'\t'
 	outstr+='SEP\t'+custom_round(Xval_case.SEP,4)+'\t'
+	outstr+='MAE\t'+custom_round(Xval_case.mean_absolute_error,4)+'\t'
+	outstr+='%MAE\t'+custom_round(Xval_case.mean_absolute_error_percent,4)+'\t'
 	outstr+=ui['cur_control_string']+'\t'
 	outstr+=ui['reg_type']+'\t'
+	'''
 	if curDerivative==1:
 		outstr+='First Derivative'+'\t'
 	elif curDerivative==2:
@@ -425,14 +441,19 @@ def add_line_to_logfile(filename,Xval_case,case,ui,keywords,RMSe,coeff_det,frac_
 	if ui['filter'] == 'Hamming':
 			outstr+='Hamming, n: '+str(ui['filterN'])+'\t'
 
-	if ui['fourier_filter']:
+	if ui['filter'] == 'Fourier':
 		outstr+='Fourier cut\t'+str(ui['fourier_filter_cut'])+'\t'
 		if not ui['fourier_window']=='None':
 			outstr+='fourier window\t'+str(ui['fourier_window'])+'\t'
 			outstr+='window multiplier\t'+custom_round(ui['fourier_window_size_multiplier'],2)+'\t'
 			outstr+='reverse fourier window\t'+str(ui['reverse_fourier_window'])+'\t'
+	'''
 	for keyword in keywords:
 		outstr+=keyword+'\t'+str(keywords[keyword])+'\t'
+	for prepros in case.preprocessing_done:
+		outstr+=prepros+'\t'
+	outstr+=case.folder
+
 	if os.path.exists(filename):
 	    append_write = 'a' # append if already exists
 	else:

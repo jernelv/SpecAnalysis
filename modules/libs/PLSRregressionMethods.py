@@ -101,6 +101,24 @@ def get_relevant_keywords(common_variables,ui):
     if ui['reg_type'] == 'Classifier':
         PLSRclassifiers.get_classifier(common_variables,ui)
 
+	#{'key': 'mean_centering', 'type': 'radio:text', 'texts': ['No mean centering', 'Mean centering','Try all'], 'tab': 0, 'row': 2} ,
+    if ui['mean_centering']=='No mean centering':
+        common_variables.keyword_lists['mean_centering']=[False]
+    elif ui['mean_centering']=='Mean centering':
+        common_variables.keyword_lists['mean_centering']=[True]
+    else:
+        common_variables.keyword_lists['mean_centering']=[False,True]
+
+    #{'key': 'scaling', 'type': 'radio:text', 'texts': ['No scaling', 'Scaling','Try all'], 'tab': 0, 'row': 2} ,
+    if ui['scaling']=='No scaling':
+        common_variables.keyword_lists['scaling']=[False]
+    elif ui['scaling']=='Scaling':
+        common_variables.keyword_lists['scaling']=[True]
+    else:
+        common_variables.keyword_lists['scaling']=[False,True]
+    #common_variables.keyword_lists['scaling']=[ui['scaling']]
+    #common_variables.keyword_lists['mean_centering']=[ui['mean_centering']]
+
     '''elif ui['reg_type'] == 'Neural Net with bidirectional long short term memory':
         common_variables.keyword_lists={'number_of_layers':ui['number_of_layers'],
         'layer_size':ui['layer_size'],'drop_frac':ui['drop_frac'],'batch_size':ui['batch_size'],'epochs':ui['epochs']}
@@ -125,8 +143,10 @@ def generate_keyword_cases(keyword_lists):
             new_combinations[-1][key]=cur_keyword_list[-1]
     return new_combinations
 
-def getRegModule(reg_type,keywords,Scaling,mean_centering):
+def getRegModule(reg_type,keywords):
 	"""Function used to get the regression type and any associated parameters."""
+	Scaling=keywords['scaling']
+	mean_centering=keywords['mean_centering']
 	if reg_type=='MLR':
 		return mlr(Scaling)
 	elif reg_type=='PLSR':
@@ -171,7 +191,7 @@ def getRegModule(reg_type,keywords,Scaling,mean_centering):
 			return myCNNRegressor(Scaling, number_of_layers, layer_size, drop_frac, batch_size, epochs, kernel_size,strides=strides,mean_centering=mean_centering,
                 optimizer=optimizer,learning_rate=learning_rate,momentum=momentum)
 	elif reg_type=='Classifier':
-		return PLSRclassifiers.get_classifier_module(reg_type,keywords,Scaling,mean_centering=mean_centering)
+		return PLSRclassifiers.get_classifier_module(reg_type,keywords)
 
 class mlr:
 	"""Implementation of multiple linear regression based on linear regression,
