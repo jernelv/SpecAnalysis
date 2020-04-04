@@ -49,7 +49,7 @@ The "examples" folder contains a folder with a few mid-infrared spectroscopy mea
 ## Spectral Pre-Processing
 Several spectral pre-processing methods are available, and can be used to e.g. correct for additive and multiplicative errors in the spectra. All pre-processing methods can be found under the "Pre-processing" tab.
 
-In principle, there are no practical restrictions on applying several pre-processing methods on the same spectra. However, multiple pre-processing steps are always done in a set order for practical purposes. If both scatter corrections and differentiation are chosen, the scatter correction method will always be done first.
+In principle, there are no practical restrictions on applying several pre-processing methods on the same spectra. However, multiple pre-processing steps are always done in a set order for practical purposes. If for example both scatter corrections and differentiation are chosen, the scatter correction method will always be done first.
 
 This is the order of pre-processing steps:
 1. Data binning
@@ -58,7 +58,7 @@ This is the order of pre-processing steps:
 4. Baseline correction
 5. Scaling
 
-Some methods are mutually exclusive due to their similarities, e.g. only one type of baseline correction can be performed during one run. One the other hand, the program allows you to perform pre-processing methods simultaneously which may worsen the prediction. For example, performing both scatter correction and differentiation will probably not improve the data prediction as compared to only scatter correction or differentiation. The use of the various methods is up to your discretion.
+Some methods are mutually exclusive due to their similarities, e.g. only one type of baseline correction can be performed during one run. One the other hand, the program allows you to perform pre-processing methods simultaneously which may worsen the prediction. For example, performing both scatter correction and differentiation will often not improve the data prediction as compared to only scatter correction or differentiation. The use of the various methods is up to your discretion.
 
 ### Data Binning
 Data binning is a method that reduces the number of data points in the spectra by finding the average of adjacent data points. With a bin factor of 4, every 4 data points are averaged and substituted by their mean absorbance intensity. The default binning factor in the program is set to "1", which means that no binning is performed.
@@ -66,7 +66,7 @@ Data binning is a method that reduces the number of data points in the spectra b
 ### Scatter Correction
 Scatter correction methods attempt to correct for variability in samples caused by light scattering, which can give both additive and multiplicative effects. A plethora of methods exist, and this software offers three main alternatives: normalisation, standard normal variate (SNV), and (extended) multiplicative scatter correction (E)MSC.
 
-### Normalisation
+#### Normalisation
 Spectra can be normalised by pressing the "normalisation" radio button.
 
 #### Standard Normal Variate
@@ -86,8 +86,11 @@ SG filtering can be switched on by pressing the radio button  "Use SG". The mini
 
 SG filtering also works together with differentiation. When SG filtering and differentiation are selected at the same time, the differentiation is performed stepwise in the SG window after smoothing. The highest derivative that can be determined depends on the polynomial order used for smoothing, i.e. you need to use at least a second-order polynomial in order to calculate up to the second derivative.
 
+#### Fourier Filter
+Fourier filtering is enabled by pressing the "Fourier" button on the filter row. You can choose between different window types on the row below, including Blackman, Blackman-Harris, Hamming, Hann, or none. The spectral data will be padded with the selected window size multiplier, which is set to 1.1 as default. The effect of the Fourier filter can be adjusted by setting the filter cut-off on the same row. The check boxes can then be used to display the Fourier-transformed spectra (in linear og log scale), and to display the spectra after the back transformation.
+
 #### Other Filters
-Other filters that are included are finite/infinite impulse filters (moving average, butterworth, hamming), as well as Fourier filter.
+Other filters that are included are moving average, butterworth, hamming.
 
 ### Baseline Correction
 Variations in baseline often occur in spectral data, and can be seen as an addition to the spectra. Baseline correction can be done in a number of ways, and a few simple methods have been implemented here.  
@@ -101,46 +104,48 @@ Differentiation of spectral data affects various spectral effects that are not r
 As a default, the spectrum is used in its raw form ("Not der"). The first or second derivatives can also be selected, and these a calculated from finite differences. All of these options are calculated sequentially and displayed if the "all" option is selected.
 
 ### Scaling/Standardisation
-Scaling standardises features by removing the sample mean and scaling the data to unit variance. Often called "mean centering and scaling". The standard deviation used is calculated from the training data.
+Scaling standardises features by scaling the data to unit variance. Often combined with mean centering. The standard deviation used is calculated from the training data. Mean centering is chosen by default when the program starts, but can be switched off, while scaling is off by default.
 
+### Plots
+The bottom row contains checkmark boxes with options for plotting the spectral data before and after pre-processing. By default the data is plotted before pre-processing, and to see the effect of pre-processing it can also be useful to plot them afterwards as well. These plots are saved if the "Save" option in the top right corner is chosen.
 
 ## Regression Methods
-
-Several regression methods are available in the program, and all program options can be found under the "Regression Methods" tab. Some of these are standard chemometric methods (PCR, PLSR, MLR), and there are also other machine learning (Random Forest) and deep learning methods. Note that regression with deep learning can be very computationally intensive.
-
+Several regression methods are available in the program, and all program options can be found under the "Regression Methods" tab. Some of these are standard chemometric methods (PCR, PLSR, MLR), and there are also other machine learning (Random Forest) and deep learning methods. Note that regression with deep learning can be very computationally intensive. No regression modelling will be performed if the "None" option is selected, and can be useful for example when investigating how different pre-processing options change the spectra.
 
 ### Multiple Linear Regression (MLR)
-MLR is a simple type of linear regression which works as an extension of ordinary least-squares regression.
-
+MLR is a simple type of linear regression which works as an extension of ordinary least-squares regression. MLR is done if the "MLR" button is selected.
 
 ### Principal Component Regression (PCR)
 A regression method based on principal component analysis (PCA). PCA is an unsupervised data reduction method, where the original data is projected onto a smaller variable subspace with linearly uncorrelated variables. These variables are called principal components. This program uses the PCA implementation from scikit-learn, which uses the singular value decomposition (SVD). This PCA implementation is then combined with linear regression in order to perform PCR.
 
-Select the "PCR" button in order to perform PCR. You can set one target principal component, or a range of principal components separated by a colon.
+Select the "PCR" button in order to perform PCR. You can set one target principal component, or a range of principal components separated by a colon. After running the regression model, you can press the "Plot components" button in order to plot the principal components. An overview of the PCA weights can also be visualised by selecting the "Plot scatter plot of weights", and you can enter the wanted principal components as the x- and y-axes in this scatter plot.
 
 ### Partial Least-Squares Regression (PLSR)
 PLSR is one of the most commonly used multivariate analysis methods in spectroscopy. PLSR finds the regression model by projecting both the dependent and independent variables to a new space, whereas PCR only regresses the dependent variables. This program uses the PLSR implementation from scikit-learn.
 
-Select the "PLSR" button in order to perform PLSR. You can set one target latent variable, or a range of latent variables separated by a colon.
-
-### Random Forest Regressor
-Random forest is an ensemble learning method that can be used for several purposes, and is used specifically for regression in this program. Random forest regression works by creating multiple decision trees, and combining these for regression analysis. This program uses the RandomForestRegressor as implemented in scikit-learn. Note that random forest regression typically has a longer runtime than PLSR and PCR.
-
-Select the "Tree" button in order to perform random forest regression.  The number of trees created is set with the "n_estimators" variable, and the tree branching depth is set with "Tree depth". After the regressor has been run, the feature importance can be viewed by pressing the "Plot feature importance" button. This will plot normalised values for the importance of each predictor.
+Select the "PLSR" button in order to perform PLSR. You can set one target latent variable, or a range of latent variables separated by a colon. After having run the program, you can plot the resulting latent variables by pressing the "Plot latent variables" button.
 
 ### Support Vector Regressor
 Support vector machines are a set of learning methods used for classification, outlier detection, and regression. As with the random forest, support vector machines are mainly used for regression in this program. This program uses the SupportVectorRegressor (SVR) from scikit-learn. Over-fitting can be an issue in SVR if there are few samples and the number of independent variables is large. If the prediction errors are high due to over-fitting, try to change the Kernel function or adjust the regularisation term.
 
 Select the "SVR" button in order to model data with support vector regression. Four kernel function are available for SVR; linear, polynomial, rbf, and sigmoid. The default setting is linear kernel function.  The box next to "degree" is used to set the degree used for a polynomial kernel function, and is ignored by other kernels. "coef0" is a coefficient used for the polynomial and sigmoid kernel functions. "gamma" is used for all kernels except the linear kernel function, and can be set to either "auto" or "scale".
 
+### Random Forest Regressor
+Random forest is an ensemble learning method that can be used for several purposes, and is used specifically for regression in this program. Random forest regression works by creating multiple decision trees, and combining these for regression analysis. This program uses the RandomForestRegressor as implemented in scikit-learn. Note that random forest regression typically has a longer runtime than PLSR and PCR.
+
+Select the "Tree" button in order to perform random forest regression.  The number of trees created is set with the "n_estimators" variable, and the tree branching depth is set with "Tree depth". After the regressor has been run, the feature importance can be viewed by pressing the "Plot feature importance" button. This will plot normalised values for the importance of each predictor.
+
 ### Other Embedded Methods
-Elastic net regularisation is a method for linear regression that combines the penalty variables from LASSO and ridge regression (L_1 and L_2, respectively).
+Elastic net regularisation is a method for linear regression that combines the penalty variables from lasso and ridge regression (L_1 and L_2, respectively).
 
-Select the "ElasticNet" button in order to model data with elastic net regularisation. The field for "l1_ratio" sets the ratio between the L1 and L2 penalties, and must be between 0 and 1. The default value is 0.5. The elastic net reduces to LASSO regularisation if l1_ratio=1, and reduces to ridge regression if l1_ratio = 0.
+Select the "ElasticNet" button in order to model data with elastic net regularisation. The field for "l1_ratio" sets the ratio between the L1 and L2 penalties, and must be between 0 and 1. The default value is 0.5. The elastic net reduces to lasso regularisation if l1_ratio=1, and reduces to ridge regression if l1_ratio = 0.
 
-Ridge regression, LASSO, and elastic net are all examples of learning algorithms where the feature selection is built-in, usually called "embedded methods". Due to this, feature selection and learning are performed at the same time, and these methods can be less computationally expensive than combining feature selection with e.g. PLSR. One disadvantage of embedded methods is that the performance and efficiency of the feature selection cannot be readily separated from that of the machine learning.
+Ridge regression, lasso, and elastic net are all examples of learning algorithms where the feature selection is built-in, usually called "embedded methods". Due to this, feature selection and learning are performed at the same time, and these methods can be less computationally expensive than combining feature selection with e.g. PLSR. One disadvantage of embedded methods is that the performance and efficiency of the feature selection cannot be readily separated from that of the machine learning.
 
-Feature selection can technically be used together with embedded methods in this software. In some cases it can be useful, for example manual wavelength selection can be used to exclude wavelength regions with little or no useful information. However, for most other cases it is recommended that embedded methods are not used in conjunction with feature selection.    
+Feature selection can technically be used together with embedded methods in this software. In some cases it can be useful, for example manual wavelength selection can be used to exclude wavelength regions with little or no useful information. However, for most other cases it is recommended that embedded methods are not used in conjunction with feature selection.
+
+### Neural Network
+Neural networks have been implemented for both regression and classification, and these work in more or less the same way. The neural network variants are therefore explained in more detail in a separate section.   
 
 ## Classification methods
 Classification methods are used to divide data into pre-defined classes. As with regression analysis, you first need to train a model on training data, and then either do cross-validation or use a separate test/validation set to verify the model.
@@ -161,32 +166,11 @@ Logistic regression is done by selecting the "LogReg" button. The radio buttons 
 
 ## Deep Learning
 
-#### Dense (Fully-connected) Neural Network
+### Dense (Fully-connected) Neural Network
 
-#### Convolutional Neural Network
+### Recurrent Neural Network
 
-## Assessing Regression Methods
-
-### Measures of Error
-The performance of a regression or classification model can be measured in several ways, this section explains the different methods used in this program.
-
-For data classification the prediction accuracy is by default measured as the percentage of correctly classified measurements.
-
-#### Root-Mean-Square Errors
-One way of evaluating the prediction accuracy of a model is to calculate the root-mean-square error (RMSE), which is a scale-dependent measure of error. Root-mean-square error of calibration (RMSEC) should be selected when investigating only training sets. Root-mean-square error of prediction (RMSEP) should be selected when assessing validation data, and RMSEP is then only calculated on the validation data. If the option "default" is chosen, the program will automatically calculate RMSEP/RMSECV for when validation or cross-validation is chosen, and RMSEC if only training data is chosen.
-
-#### Standard Error of Prediction
-
-#### Mean Absolute Percentage Error
-
-#### Coefficient of Determination
-The coefficient of determination, written as R^2, is a metric that indicates how much of the variance in the dependent variable that is predicted from the independent variables. An R^2 of 1 indicates that the variance is perfectly predicted.
-
-### Cross-Validation
-Cross-validation in the program is done via the ShuffleSplit iterator from scikit-learn. With this iterator, the user chooses the number of data points (N) to be used as "validation" for the cross-validation and the number of iterations.
-
-For the special case of N=1, if the number of iterations is set to "-1", the program will do leave-one-out cross-validation (LOOCV).  
-
+### Convolutional Neural Network
 
 ## Wavelength Selection Methods
 
@@ -222,20 +206,50 @@ Each wavenumber is scored individually according to the correlation with the res
 ## Import Options
 
 ### Loading in Data
-
 All files and folders on the same folder level as the program will be shown in a column on the left side of the program. You can navigate through the different folders by clicking on them.
 
 Clicking on a .list-file will select it, and the selection is indicated with a grey background. Two buttons under the folder tree can be used to set the .list-files as either "Training" or "Validation". Several .list-files can be loaded into the program at once. For example, you can mark several .list-files by holding the CTRL button as you are selecting them, and then pressing "Training" or "Validation".
+
+### Data Import Options
+Under the "Data Import" tab, you can choose to analyse the data as "Training", "Training and validation", or "X-val on training". Note that a validation dataset must be selected if you wish to run the analysis as "Training and validation", and training data must be selected for all types of analysis.
+
+### Cross-Validation
+Cross-validation in the program is done via the ShuffleSplit iterator from scikit-learn. With this iterator, the user chooses the number of data points (N) to be used as "validation" for the cross-validation and the number of iterations.
+
+For the special case of N=1, if the number of iterations is set to "-1", the program will do leave-one-out cross-validation (LOOCV).  
+
+### Column of Data
+The selected dataset may have several columns of data variables, such as concentrations of different analytes. Here you can set the column of data you want to use. By default the first data column will be chosen. After running the program once with a dataset selected, the headers of these columns will be displayed on this row.
+
+### Maximum Concentration
+Here you can set the highest concentration/amount of the target analyte you want to include in the data, for training and/or validation.
+
+### Unit
+Here you can set the unit of the analyte for regression analysis, and the default unit is [mg/dL].
+
+### Assessing Regression Methods
+The performance of a regression or classification model can be measured in several ways, this section explains the different methods used in this program.
+
+For data classification the prediction accuracy is by default measured as the percentage of correctly classified measurements.
+
+#### Root-Mean-Square Errors
+One way of evaluating the prediction accuracy of a model is to calculate the root-mean-square error (RMSE), which is a scale-dependent measure of error. Root-mean-square error of calibration (RMSEC) should be selected when investigating only training sets. Root-mean-square error of prediction (RMSEP) should be selected when assessing validation data, and RMSEP is then only calculated on the validation data. If the option "default" is chosen, the program will automatically calculate RMSEP/RMSECV for when validation or cross-validation is chosen, and RMSEC if only training data is chosen.
+
+#### Coefficient of Determination
+The coefficient of determination, written as $R^2$, is a metric that indicates how much of the variance in the dependent variable that is predicted from the independent variables. An R^2 of 1 indicates that the variance is perfectly predicted. The correlation coefficient (R) is sometimes used, and is therefore also included as an alternative.
+
+#### Standard Error of Prediction
+Standard error of prediction (SEP) is quite similar to RMSE, but does not include the bias term. SEP is therefore smaller or equal to the RMSE.
+
+#### Mean Absolute (Percentage) Error
+
+
 
 ### Saving Your Data
 Generated plots will only be saved if you check the box next to "Save". All plots will then be saved, together with a screen shot of the program. A log file will also be created, with all necessary details of the methods used. This log file also contains the names and file paths of all files that were used in the analysis.
 
 The name of the current save folder is shown next to the "Save" options, and can be changed manually. The folder will be created if it does not exist.
 
-### Data Import Options
-Under the "Data Import" tab, you can choose to analyse the data as "Training", "Training and validation", or "X-val on training". Note that a validation dataset must be selected if you wish to run the analysis as "Training and validation", and training data must be selected for all types of analysis.
-
-For cross-validation analysis, the number of data points used for cross-validation and the number of iterations can be set manually. As mentioned above, the ShuffleSpilt iterator from scikit-learn is used for this.
 
 ### Other Options
 Plots can be saved in either .png, .pdf, or .svg format by choosing the appropriately named button.
@@ -253,4 +267,4 @@ For trying out many parameters and saving the subsequent data, there is an optio
 ## Other Information
 
 ### Going through many model parameters
-This program facilitates testing of many parameters in sequence. This functionality can be useful for example if you need to find the best pre-processing steps for a new dataset. As mentioned at several points, most textboxes with variable parameters allow you to input several variables separated by commas, or a range of variables separated by a colon. For pre-processing, most methods also have a "try all" option. For example for spectral derivatives, you can choose "No der.", "1st der.", "2nd der.", or "try all". With the "try all" option selected, the program will go through all the possible options for that method. With several methods selected at the same time, such as filters, derivatives, and scatter correction, the program will go through all possible combinations of the separate methods. 
+This program facilitates testing of many parameters in sequence. This functionality can be useful for example if you need to find the best pre-processing steps for a new dataset. As mentioned at several points, most textboxes with variable parameters allow you to input several variables separated by commas, or a range of variables separated by a colon. For pre-processing, most methods also have a "try all" option. For example for spectral derivatives, you can choose "No der.", "1st der.", "2nd der.", or "try all". With the "try all" option selected, the program will go through all the possible options for that method. With several methods selected at the same time, such as filters, derivatives, and scatter correction, the program will go through all possible combinations of the separate methods.
