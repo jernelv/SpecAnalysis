@@ -168,19 +168,24 @@ Logistic regression is done by selecting the "LogReg" button. The radio buttons 
 ## Assessing Regression Methods
 
 ### Measures of Error
+The performance of a regression or classification model can be measured in several ways, this section explains the different methods used in this program.
+
+For data classification the prediction accuracy is by default measured as the percentage of correctly classified measurements.
 
 #### Root-Mean-Square Errors
-Root-mean-square erros (RMSEs) are the main measures for evaluating the models and prediction accuracy.
+One way of evaluating the prediction accuracy of a model is to calculate the root-mean-square error (RMSE), which is a scale-dependent measure of error. Root-mean-square error of calibration (RMSEC) should be selected when investigating only training sets. Root-mean-square error of prediction (RMSEP) should be selected when assessing validation data, and RMSEP is then only calculated on the validation data. If the option "default" is chosen, the program will automatically calculate RMSEP/RMSECV for when validation or cross-validation is chosen, and RMSEC if only training data is chosen.
 
-Root-mean-square error of calibration (RMSEC) should be selected when when investigating only training sets. Root-mean-square error of prediction (RMSEP) should be selected when assessing validation data, and RMSEP is then only calculated on the validation data. The program will calculate an average between RMSEC and RMSEP if the option "RMSEC+RMSEP" is chosen.
+#### Standard Error of Prediction
+
+#### Mean Absolute Percentage Error
 
 #### Coefficient of Determination
 The coefficient of determination, written as R^2, is a metric that indicates how much of the variance in the dependent variable that is predicted from the independent variables. An R^2 of 1 indicates that the variance is perfectly predicted.
 
-#### Cross-Validation
+### Cross-Validation
 Cross-validation in the program is done via the ShuffleSplit iterator from scikit-learn. With this iterator, the user chooses the number of data points (N) to be used as "validation" for the cross-validation and the number of iterations.
 
-For the special case of N=1, the number of iterations is automatically set to the size of the data set, thus making leave-one-out cross-validation (LOOCV).  
+For the special case of N=1, if the number of iterations is set to "-1", the program will do leave-one-out cross-validation (LOOCV).  
 
 
 ## Wavelength Selection Methods
@@ -230,7 +235,7 @@ The name of the current save folder is shown next to the "Save" options, and can
 ### Data Import Options
 Under the "Data Import" tab, you can choose to analyse the data as "Training", "Training and validation", or "X-val on training". Note that a validation dataset must be selected if you wish to run the analysis as "Training and validation", and training data must be selected for all types of analysis.
 
-For cross-validation analysis, the number of data points used for cross-validation and the number of iterations can be set manually. As mentioned above, the ShuffleSpilt iterator from scikit-learn is used for this. When the number of data points for CV is set to 1, the program defaults to performing leave-one-out cross-validation, where the number of iterations is set to the dataset size.  
+For cross-validation analysis, the number of data points used for cross-validation and the number of iterations can be set manually. As mentioned above, the ShuffleSpilt iterator from scikit-learn is used for this.
 
 ### Other Options
 Plots can be saved in either .png, .pdf, or .svg format by choosing the appropriately named button.
@@ -248,3 +253,4 @@ For trying out many parameters and saving the subsequent data, there is an optio
 ## Other Information
 
 ### Going through many model parameters
+This program facilitates testing of many parameters in sequence. This functionality can be useful for example if you need to find the best pre-processing steps for a new dataset. As mentioned at several points, most textboxes with variable parameters allow you to input several variables separated by commas, or a range of variables separated by a colon. For pre-processing, most methods also have a "try all" option. For example for spectral derivatives, you can choose "No der.", "1st der.", "2nd der.", or "try all". With the "try all" option selected, the program will go through all the possible options for that method. With several methods selected at the same time, such as filters, derivatives, and scatter correction, the program will go through all possible combinations of the separate methods. 
