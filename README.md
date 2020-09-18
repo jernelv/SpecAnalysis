@@ -4,13 +4,13 @@
 
 SpecAnalysis was made for the analysis of 2D arrays of multivariate data. Pre-processing methods, various regression methods, and feature selection methods are included. Data plots can be saved in several formats, and metadata is always logged when you save data.
 
-SpecAnalysis is intended as a modular software with great flexibility. This readme provides detailed information on the methods used, and the program should be useable even if you are unfamiliar with programming. The code is also commented, and is hopefully understandable. Due to the modular nature of the code, it is relatively easy to add your own methods.
+SpecAnalysis is intended as a modular software with great flexibility. This readme provides detailed information on the methods used, and the program should be useable even if you are unfamiliar with programming. The code is also commented, and is hopefully understandable. Due to the modular nature of the code, it is relatively easy to add your own methods or ajdust already existing methods.
 
-Feel free to use SpecAnalysis for your research. You can cite this software with: I.L. Jernelv, K. Strøm, D.R. Hjelme, A. Aksnes, Mid-infrared spectroscopy with a fiber-coupled tuneable quantum cascade laser for glucose sensing. Proceedings of SPIE 11233, Optical Fibers and Sensors for Medical Diagnostics and Treatment Applications XX, 1123311, 2020.
+Feel free to use SpecAnalysis for your research. You can cite this software with: I.L. Jernelv, D.R. Hjelme, Y. Matsuura, and A. Aksnes. Convolutional neural networks for classification and regression analysis of one-dimensional spectral data. arXiv preprint arXiv:2005.07530 (2020).
 
 NB! The program will not teach you anything about data analysis, machine learning, or deep learning, but it can hopefully be a useful resource for looking at your data.
 
-The code for this program is made in Python3.6, and uses functions/methods from scipy and scikit-learn, as well as methods that have been made in-house. The GUI is based on the Lazy Scientific Data Manager (github link).
+The code for this program is made in Python3.6, and uses functions/methods from scipy and scikit-learn, as well as methods that have been made in-house.
 
 The program has mainly been tested on mid-infrared spectroscopic data.
 
@@ -19,8 +19,6 @@ The program has mainly been tested on mid-infrared spectroscopic data.
 ### Linux
 
 The easiest way to run the program in Linux is to download the GitHub repository, and run the specanalysis.py file from terminal. If you are missing any of the required packages you will get a message in the terminal. Simply install any missing packages, and run the program when you have everything installed.
-
-Some of the required packages are: ...
 
 ### Windows
 
