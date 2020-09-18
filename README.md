@@ -22,7 +22,7 @@ The easiest way to run the program in Linux is to download the GitHub repository
 
 ### Windows
 
-If you are using the .exe program, no other packages should be necessary. Note that the .exe program has only been tested on Windows 7/10, so usage on other versions comes at your own risk.
+In Windows you can install a Python IDE, for example PyCharm or Spyder, and run the file called specanalysis.py from the IDE. The IDE will give an error message if you are missing any required packages to run SpecAnalysis. In that case, just install the required package, and try to run it again.
 
 
 
