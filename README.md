@@ -30,9 +30,9 @@ In Windows you can install a Python IDE, for example PyCharm or Spyder, and run 
 
 Spectral files should be in a two-column format where the first column contains the independent variables, and the second column contains the dependent variables. The columns can be either tab- or comma-separated. The file extension for these files should be .csv, .dpt, or .txt. Header lines in these files containing any extra information must start with a '#'.
 
-The spectral files and their metadata can be loaded into the program through special '.list'-files. The first column in this file should contain the filepaths to all individual spectral files in a dataset. Additional columns contain known metadata for each file, such as concentrations for analytes or categorical variables. The first line in each list file is used to label the different columns. The first column is always labelled "Filepath", while the subsequent columns should be given descriptive names. These .list-files can be made in e.g. Notepad++ on Windows or OSX, or your editor of choice on Linux.
+The spectral files and their metadata can be loaded into the program through special '.list'-files. The first column in this file should contain the filepaths to all individual spectral files in a dataset. Additional columns contain known metadata for each file, such as concentrations for analytes or categorical variables. The first line in each list file is used to label the different columns. The first column is always labelled "Filepath", while the subsequent columns should be given descriptive names. These .list-files can be made in e.g. Notepad++ on Windows or OSX, or in your editor of choice in Linux.
 
-The "examples" folder contains a folder with a few mid-infrared spectroscopy measurements of glucose solutions, and a corresponding example.list-file.
+The "data/FTIR_data" folder contains a folder with a few mid-infrared spectroscopy measurements of glucose solutions, and a corresponding "preprint_data.list" file. This example data can be used to try out the program and as a template for your own .list-files.
 
 
 ## Quick Start Guide
@@ -42,6 +42,8 @@ The "examples" folder contains a folder with a few mid-infrared spectroscopy mea
 3. Under "Regression", set the regression method that you want to use, and any related parameters.
 4. Under "Import Options", choose if you want to do training, training and validation, or cross-validation analysis. For "Column of data to use", select the analyte/component of the sample you want to investigate (this defaults to the first analyte in the .list-file).
 5. Press the "Run" button in order to run the program with the chosen parameters. Check the box next to "Save" before running if you want the results to be saved.
+
+NB! There is a known bug where the program freezes as it attempts to load in buttons. Press the Alt key in order to bypass this.
 
 
 ## Spectral Pre-Processing
@@ -62,18 +64,18 @@ Some methods are mutually exclusive due to their similarities, e.g. only one typ
 Data binning is a method that reduces the number of data points in the spectra by finding the average of adjacent data points. With a bin factor of 4, every 4 data points are averaged and substituted by their mean absorbance intensity. The default binning factor in the program is set to "1", which means that no binning is performed.
 
 ### Scatter Correction
-Scatter correction methods attempt to correct for variability in samples caused by light scattering, which can give both additive and multiplicative effects. A plethora of methods exist, and this software offers three main alternatives: normalisation, standard normal variate (SNV), and (extended) multiplicative scatter correction (E)MSC.
+Scatter correction methods attempt to correct for variability in samples caused by light scattering, which can give both additive and multiplicative effects. A plethora of methods exist, and this software offers three main alternatives: normalisation, standard normal variate (SNV), and multiplicative scatter correction MSC.
 
 #### Normalisation
-Spectra can be normalised by pressing the "normalisation" radio button.
+Spectra can be normalised by checking the box next to "normalisation".
 
 #### Standard Normal Variate
 Standard normal variate (SNV) is a pre-processing method that attempts to correct scatter effects in individual spectra. This is done by taking the mean centre of each spectrum, and then dividing each mean-centred spectrum by its own standard deviation.
 
-SNV is done by selecting the "SNV" button.
+SNV is done by checking the box next to "SNV".
 
 #### (Extended) Multiplicative Scatter Correction
-MSC and EMSC typically correct against a reference spectrum. You can add your reference spectrum by clicking on "reference spectrum" and browsing through your file system. However, the algorithms can also make an internal reference spectrum based on the average of the training data, if no reference spectrum is available.
+MSC and EMSC typically correct against a reference spectrum. You can add your reference spectrum by clicking on "reference spectrum" and browsing through your file system. However, the algorithms can also make an internal reference spectrum based on the average of the training data, if no reference spectrum is available. Note that the reference spectrum must have the same dimensions as the imported data.
 
 ### Filtering
 
@@ -88,13 +90,13 @@ SG filtering also works together with differentiation. When SG filtering and dif
 Fourier filtering is enabled by pressing the "Fourier" button on the filter row. You can choose between different window types on the row below, including Blackman, Blackman-Harris, Hamming, Hann, or none. The spectral data will be padded with the selected window size multiplier, which is set to 1.1 as default. The effect of the Fourier filter can be adjusted by setting the filter cut-off on the same row. The check boxes can then be used to display the Fourier-transformed spectra (in linear og log scale), and to display the spectra after the back transformation.
 
 #### Other Filters
-Other filters that are included are moving average, butterworth, hamming.
+Other filters that are included are moving average, Butterworth, and Hamming.
 
 ### Baseline Correction
 Variations in baseline often occur in spectral data, and can be seen as an addition to the spectra. Baseline correction can be done in a number of ways, and a few simple methods have been implemented here.  
 
 #### Background correction
-With "Subtract first variable as baseline" the first bin of each spectrum is set to zero, and the same constant correction is applied to the entire spectrum. Using "Subtract linear background" a linearly increasing baseline between the first and last bins is subtracted from the spectra. With the "Subtract reference spectrum"  option selected a custom background spectrum can be loaded in. This reference spectrum must have the same dimensions as the chosen dataset. If none of these operations is selected the default operation no baseline correction is applied.
+With "Subtract first variable as baseline" the first bin of each spectrum is set to zero, and the same constant correction is applied to the entire spectrum. Using "Subtract linear background" a linearly increasing baseline between the first and last bins is subtracted from the spectra. With the "Subtract reference spectrum"  option selected a custom background spectrum can be loaded in. This reference spectrum must have the same dimensions as the chosen dataset. If none of these operations is selected the default operation of no baseline correction is applied.
 
 #### Differentiation/Spectral Derivatives
 Differentiation of spectral data affects various spectral effects that are not related to the sample analytes, and is a simple tool for correcting spectral data. The first derivative of a spectrum removes additive spectral effects, while the second derivative also removes multiplicative effects. By default, the program uses finite differences as a numerical method to do differentiation. Note that differentiation by finite differences has a tendency to inflate noise, and can worsen prediction, especially if the SNR is low.
@@ -102,10 +104,10 @@ Differentiation of spectral data affects various spectral effects that are not r
 As a default, the spectrum is used in its raw form ("Not der"). The first or second derivatives can also be selected, and these a calculated from finite differences. All of these options are calculated sequentially and displayed if the "all" option is selected.
 
 ### Scaling/Standardisation
-Scaling standardises features by scaling the data to unit variance. Often combined with mean centering. The standard deviation used is calculated from the training data. Mean centering is chosen by default when the program starts, but can be switched off, while scaling is off by default.
+Scaling standardises features by scaling the data to unit variance and is often combined with mean centering. The standard deviation used is calculated from the training data. Mean centering is chosen by default when the program starts, but can be switched off, while scaling is off by default.
 
 ### Plots
-The bottom row contains checkmark boxes with options for plotting the spectral data before and after pre-processing. By default the data is plotted before pre-processing, and to see the effect of pre-processing it can also be useful to plot them afterwards as well. These plots are saved if the "Save" option in the top right corner is chosen.
+The bottom row contains checkmark boxes with options for plotting the spectral data before and after pre-processing. By default the data is plotted before pre-processing, and to see the effect of pre-processing it can be useful to plot them afterwards as well. These plots are saved if the "Save" option in the top right corner is chosen.
 
 ## Regression Methods
 Several regression methods are available in the program, and all program options can be found under the "Regression Methods" tab. Some of these are standard chemometric methods (PCR, PLSR, MLR), and there are also other machine learning (Random Forest) and deep learning methods. Note that regression with deep learning can be very computationally intensive. No regression modelling will be performed if the "None" option is selected, and can be useful for example when investigating how different pre-processing options change the spectra.
@@ -116,22 +118,23 @@ MLR is a simple type of linear regression which works as an extension of ordinar
 ### Principal Component Regression (PCR)
 A regression method based on principal component analysis (PCA). PCA is an unsupervised data reduction method, where the original data is projected onto a smaller variable subspace with linearly uncorrelated variables. These variables are called principal components. This program uses the PCA implementation from scikit-learn, which uses the singular value decomposition (SVD). This PCA implementation is then combined with linear regression in order to perform PCR.
 
-Select the "PCR" button in order to perform PCR. You can set one target principal component, or a range of principal components separated by a colon. After running the regression model, you can press the "Plot components" button in order to plot the principal components. An overview of the PCA weights can also be visualised by selecting the "Plot scatter plot of weights", and you can enter the wanted principal components as the x- and y-axes in this scatter plot.
+Select the "PCR" button in order to do PCR. You can set one target principal component, or a range of principal components separated by a colon. After running the regression model, you can press the "Plot components" button in order to plot the principal components. An overview of the PCA weights can also be visualised by selecting the "Plot scatter plot of weights", and you can enter the wanted principal components as the x- and y-axes in this scatter plot.
 
 ### Partial Least-Squares Regression (PLSR)
-PLSR is one of the most commonly used multivariate analysis methods in spectroscopy. PLSR finds the regression model by projecting both the dependent and independent variables to a new space, whereas PCR only regresses the dependent variables. This program uses the PLSR implementation from scikit-learn.
+PLSR is one of the most commonly used multivariate analysis methods in spectroscopy. PLSR finds the regression model by projecting both the dependent and independent variables to a new space, whereas PCR only regresses only the dependent variables. This program uses the PLSR implementation from scikit-learn.
 
 Select the "PLSR" button in order to perform PLSR. You can set one target latent variable, or a range of latent variables separated by a colon. After having run the program, you can plot the resulting latent variables by pressing the "Plot latent variables" button.
-
-### Support Vector Regressor
-Support vector machines are a set of learning methods used for classification, outlier detection, and regression. As with the random forest, support vector machines are mainly used for regression in this program. This program uses the SupportVectorRegressor (SVR) from scikit-learn. Over-fitting can be an issue in SVR if there are few samples and the number of independent variables is large. If the prediction errors are high due to over-fitting, try to change the Kernel function or adjust the regularisation term.
-
-Select the "SVR" button in order to model data with support vector regression. Four kernel function are available for SVR; linear, polynomial, rbf, and sigmoid. The default setting is linear kernel function.  The box next to "degree" is used to set the degree used for a polynomial kernel function, and is ignored by other kernels. "coef0" is a coefficient used for the polynomial and sigmoid kernel functions. "gamma" is used for all kernels except the linear kernel function, and can be set to either "auto" or "scale".
 
 ### Random Forest Regressor
 Random forest is an ensemble learning method that can be used for several purposes, and is used specifically for regression in this program. Random forest regression works by creating multiple decision trees, and combining these for regression analysis. This program uses the RandomForestRegressor as implemented in scikit-learn. Note that random forest regression typically has a longer runtime than PLSR and PCR.
 
 Select the "Tree" button in order to perform random forest regression.  The number of trees created is set with the "n_estimators" variable, and the tree branching depth is set with "Tree depth". After the regressor has been run, the feature importance can be viewed by pressing the "Plot feature importance" button. This will plot normalised values for the importance of each predictor.
+
+### Support Vector Regressor
+Support vector machines are a set of learning methods used for classification, outlier detection, and regression. As with the random forest, support vector machines are mainly used for regression in this program. This program uses the SupportVectorRegressor (SVR) from scikit-learn. Over-fitting can be an issue in SVR if there are few samples and the number of independent variables is large. If the prediction errors are high due to over-fitting, try to change the kernel function or adjust the regularisation term.
+
+Select the "SVR" button in order to model data with support vector regression. Four kernel function are available for SVR; linear, polynomial, rbf, and sigmoid. The default setting is linear kernel function.  The box next to "degree" is used to set the degree used for a polynomial kernel function, and is ignored by other kernels. "coef0" is a coefficient used for the polynomial and sigmoid kernel functions. "gamma" is used for all kernels except the linear kernel function, and can be set to either "auto" or "scale".
+
 
 ### Other Embedded Methods
 Elastic net regularisation is a method for linear regression that combines the penalty variables from lasso and ridge regression (L_1 and L_2, respectively).
@@ -143,7 +146,7 @@ Ridge regression, lasso, and elastic net are all examples of learning algorithms
 Feature selection can technically be used together with embedded methods in this software. In some cases it can be useful, for example manual wavelength selection can be used to exclude wavelength regions with little or no useful information. However, for most other cases it is recommended that embedded methods are not used in conjunction with feature selection.
 
 ### Neural Network
-Neural networks have been implemented for both regression and classification, and these work in more or less the same way. The neural network variants are therefore explained in more detail in a separate section.   
+Neural networks have been implemented for both regression and classification, and these work in more or less the same way. The neural network variants are therefore explained in more detail in a separate section below.   
 
 ## Classification methods
 Classification methods are used to divide data into pre-defined classes. As with regression analysis, you first need to train a model on training data, and then either do cross-validation or use a separate test/validation set to verify the model.
@@ -163,6 +166,7 @@ Do k-nearest neighbours (kNN) classification by pressing the "kNN" button. kNN i
 Logistic regression is done by selecting the "LogReg" button. The radio buttons on the same row determine the penalty term that is used. i.e. either l2-penalty, l1-penalty, elastic net, or none.
 
 ## Deep Learning
+Several methods using artificial neural networks (ANNs) have been added in SpecAnalysis. ANNs can be used on both regression and classification data, so the following description is valid for both regression and classification of spectroscopy data.
 
 ### Dense (Fully-connected) Neural Network
 
@@ -172,34 +176,36 @@ Logistic regression is done by selecting the "LogReg" button. The radio buttons 
 
 ## Wavelength Selection Methods
 
-All program options related to feature selection methods can be found under the "Wavelength Selection" tab. Wavelength selection, or feature selection, is used to remove uncorrelated or noisy predictor variables, as a means to reduce data complexity or gain more insight into the data.
+All program options related to feature selection methods can be found under the "Wavelength Selection" tab. Wavelength selection, or feature selection, is used to remove uncorrelated or noisy predictor variables as a means to reduce data complexity or gain more insight into the data.
 
 ### Set Data Range Manually
 The wavelength region used for the regression methods can be set manually in the field next to "Data range". The range is indicated by two numbers separated by a ":". More than one range can be set, and in this case the ranges should be separated by a ",". By default ":," is entered in the field, and in this case the entire available data range is used.
 
-Another option is load in a .txt-file to designate which independent variables should be used in the analysis. This .txt-file must be in a two-column format, where one column lists the independent variables and the other column uses 1's and 0's to indicate which variables should be used in the regression.  
+Another option is load in a .txt-file to designate which independent variables should be used in the analysis. This .txt-file must be in a two-column format, where one column lists the independent variables and the other column uses 1's and 0's to indicate which variables should be used in the regression. In order to load a feature selection file, press the "Select active wavenumbers" button, and navigate to the file you want to use. This file must have the same feature dimensions as the analysed data.
 
 Setting the data range can be used together with other wavelength selection methods. For example if you set a data range and run moving window selection, the moving windows will be built only inside the chosen data range(s).
 
 ### Moving Window (MW)
-An explicit wavelength selection method that looks for the most informative wavelength intervals. This is done by creating a window that moves over the whole spectral region, and building regression models at each window position. The optimal window can then be chosen based on prediction error and model complexity. MW wavelength selection has been described several times in scientific literature, see e.g. (ref). The MW implementation used here has been made in-house.
+An explicit wavelength selection method that looks for the most informative wavelength intervals. This is done by creating a window that moves over the whole spectral region, and building regression models at each window position. The optimal window can then be chosen based on prediction error and model complexity. MW wavelength selection has been described several times in scientific literature. The MW implementation used here has been made in-house.
 
 MW wavelength selection is enabled by selecting the "Moving Window" button. The window size can be set with a start and stop range. Note that the process will be more time-consuming if a larger window size range is chosen. A heat map of the prediction error is created from the results, with window position on the x-axis and window size on the y-axis. The regression plot with the lowest prediction error will be displayed, and the window position will be indicated in the plot.
 
 ### Genetic Algorithm
-Wavelength selection by genetic algorithm is enabled by selecting the "Genetic algorithm" button. Wavelength selection by genetic algorithm has more parameters than the other methods. "Num. individuals" determines the number of different individuals in the genetic algorithm, "crossover rate" determines the rate of individuals that have their "genes" mixed to create the next generation, and "mutation" rate determines the rate of random change in individuals from one generation to the next.
+Wavelength selection by genetic algorithm is enabled by selecting the "Genetic algorithm" button. Wavelength selection by genetic algorithm has more parameters than the other methods. "Num. individuals" determines the number of different individuals in the genetic algorithm, "crossover rate" determines the rate of individuals that have their "genes" mixed to create the next generation, "mutation" rate determines the rate of random change in individuals from one generation to the next, and "GA generations" set the numbers of generations used. The genetic algorithm used here has been implemented in-house.
 
 Running the genetic algorithm will create a plot that shows the best individual from each generation. A regression plot from the best individual in the last generation will also be displayed at the end. The best individual will also be saved in a .txt-file in a two-column format, with 1's and 0's representing which independent variables are used for the regression.
 
 ### Sequential Feature Selection
-Forward selection is a simple method for feature selection. The model starts by having no features, and then the features that most improve the model are added iteratively. Forward selection stops once no improvement is found for further addition of features. This method starts with all the features in the model, and iteratively removes the least significant feature. Backward elimination stops when there is no added improvement upon removal of more features.
+Forward selection is a simple method for feature selection. The model starts by having no features, and then the features that most improves the model are added iteratively. Forward selection stops once no improvement is found for further addition of features. This method starts with all the features in the model, and iteratively removes the least significant feature. Backward elimination stops when there is no added improvement upon removal of more features.
 
-Sequential selection uses a combination of forward and backward selection. It starts by adding features as in forward selection, but features can be removed if any subsequently added features make them less important. Sequential selection thereby tries to avoid one of the typical issues of forward selection, which is a tendency to add redundant features. However, it is more computationally intensive.
+Sequential feature selection (SFS) uses a combination of forward and backward selection. It starts by adding features as in forward selection, but features can be removed if any subsequently added features make them less important. Sequential selection thereby tries to avoid one of the typical issues of forward selection, which is a tendency to add redundant features. However, it is more computationally intensive.
 
-### Threshold Selection
-Each wavenumber is scored individually according to the correlation with the response variable (e.g. glucose concentration). The best wavenumbers, according to a cut-off defined by the user, can then be used in the regression analysis. Threshold selection is easy to implement and usually very efficient. However, the chosen variables can be redundant or may have unexpected interactions. The cut-off value is also rather arbitrary, as it is user-defined.
+SFS can be chosen with the "Sequential feature selection" button.
 
-### Jack-Knifing
+<!--  ### Threshold Selection
+Each wavenumber is scored individually according to the correlation with the response variable (e.g. glucose concentration). The best wavenumbers, according to a cut-off defined by the user, can then be used in the regression analysis. Threshold selection is easy to implement and usually very efficient. However, the chosen variables can be redundant or may have unexpected interactions. The cut-off value is also rather arbitrary, as it is user-defined.-->
+
+### Feature Selection Validation
 
 ## Import Options
 
